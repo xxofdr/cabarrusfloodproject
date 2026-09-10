@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
   <meta charset="UTF-8">
 
   <meta
@@ -11,23 +13,31 @@
   <title>Cabarrus Flood Smart Intake</title>
 
   <link rel="stylesheet" href="./style.css">
+
 </head>
 
+
 <body>
+
 
   <!-- =====================================================
        APPLICATION HEADER
   ====================================================== -->
 
   <header class="app-header">
+
     <div>
+
       <h1>Cabarrus Flood Smart Intake</h1>
 
       <p>
         Property Identification &amp; Floodplain Screening Pilot
       </p>
+
     </div>
+
   </header>
+
 
 
   <!-- =====================================================
@@ -35,6 +45,7 @@
   ====================================================== -->
 
   <main class="container">
+
 
 
     <!-- ===================================================
@@ -46,7 +57,8 @@
       <h2>Property Search</h2>
 
       <p class="instructions">
-        Enter a Cabarrus County Property PIN, Legacy PIN, or Parcel Number.
+        Enter a Cabarrus County Property PIN, Legacy PIN,
+        Old PIN, or Parcel Number.
       </p>
 
 
@@ -55,10 +67,14 @@
         <input
           type="text"
           id="pinInput"
-          placeholder="Example: 556744376"
+          placeholder="Example: 5567444376"
+          autocomplete="off"
         >
 
-        <button id="searchButton">
+        <button
+          id="searchButton"
+          type="button"
+        >
           🔎 Search GIS
         </button>
 
@@ -66,7 +82,10 @@
 
 
       <p class="example">
-        Test PIN: <strong>556744376</strong>
+
+        Test PIN:
+        <strong>5567444376</strong>
+
       </p>
 
     </section>
@@ -91,7 +110,9 @@
 
 
       <div id="statusMessage">
+
         Enter a Property PIN to begin.
+
       </div>
 
     </section>
@@ -110,7 +131,9 @@
       <div class="property-grid">
 
 
-        <!-- SEARCH INPUT -->
+        <!-- ===============================================
+             SEARCH INPUT
+        ================================================ -->
 
         <div class="property-item">
 
@@ -126,7 +149,9 @@
 
 
 
-        <!-- LEGACY PIN / OLDPIN -->
+        <!-- ===============================================
+             LEGACY PIN / OLDPIN
+        ================================================ -->
 
         <div class="property-item">
 
@@ -142,12 +167,14 @@
 
 
 
-        <!-- CURRENT PIN14 -->
+        <!-- ===============================================
+             CURRENT PIN
+        ================================================ -->
 
         <div class="property-item">
 
           <span class="label">
-            Current PIN14
+            Current PIN
           </span>
 
           <span id="pin14Result">
@@ -158,7 +185,9 @@
 
 
 
-        <!-- OWNER -->
+        <!-- ===============================================
+             PROPERTY OWNER
+        ================================================ -->
 
         <div class="property-item">
 
@@ -174,7 +203,9 @@
 
 
 
-        <!-- PROPERTY STATUS -->
+        <!-- ===============================================
+             PROPERTY STATUS
+        ================================================ -->
 
         <div class="property-item">
 
@@ -207,7 +238,9 @@
       <div class="workflow">
 
 
-        <!-- STEP 1 -->
+        <!-- ===============================================
+             STEP 1
+        ================================================ -->
 
         <div
           class="workflow-step active"
@@ -240,7 +273,9 @@
 
 
 
-        <!-- STEP 2 -->
+        <!-- ===============================================
+             STEP 2
+        ================================================ -->
 
         <div
           class="workflow-step"
@@ -273,7 +308,9 @@
 
 
 
-        <!-- STEP 3 -->
+        <!-- ===============================================
+             STEP 3
+        ================================================ -->
 
         <div
           class="workflow-step"
@@ -306,7 +343,9 @@
 
 
 
-        <!-- STEP 4 -->
+        <!-- ===============================================
+             STEP 4
+        ================================================ -->
 
         <div
           class="workflow-step"
@@ -339,7 +378,9 @@
 
 
 
-        <!-- STEP 5 -->
+        <!-- ===============================================
+             STEP 5
+        ================================================ -->
 
         <div
           class="workflow-step"
@@ -381,5 +422,7 @@
 
   <script src="./script.js"></script>
 
+
 </body>
+
 </html>
