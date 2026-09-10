@@ -1,14 +1,27 @@
 /* =====================================================
    CABARRUS FLOOD SMART INTAKE
-   SCRIPT
+   LIVE PROPERTY SEARCH
 ===================================================== */
 
 document.addEventListener("DOMContentLoaded", function () {
 
-  console.log("Cabarrus Flood Smart Intake script loaded.");
+  /* ===================================================
+     PUBLIC GIS ENDPOINT
+  =================================================== */
 
-  const pinInput = document.getElementById("pinInput");
-  const searchButton = document.getElementById("searchButton");
+  const TAX_PARCELS_URL =
+    "https://location.cabarruscounty.us/arcgisservices/rest/services/OpenData/Tax_Parcels/MapServer/1/query";
+
+
+  /* ===================================================
+     PAGE ELEMENTS
+  =================================================== */
+
+  const pinInput =
+    document.getElementById("pinInput");
+
+  const searchButton =
+    document.getElementById("searchButton");
 
   const statusMessage =
     document.getElementById("statusMessage");
@@ -18,67 +31,57 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
   /* ===================================================
-     CONFIRM REQUIRED ELEMENTS EXIST
+     STARTUP CHECK
   =================================================== */
 
-  if (!pinInput) {
-    console.error("ERROR: pinInput was not found.");
-  }
+  console.log("Cabarrus Flood Smart Intake loaded.");
 
-  if (!searchButton) {
-    console.error("ERROR: searchButton was not found.");
+  if (!pinInput || !searchButton) {
+
+    console.error(
+      "Required page elements were not found."
+    );
+
+    return;
+
   }
 
 
   /* ===================================================
-     BUTTON CLICK
+     SEARCH BUTTON
   =================================================== */
 
-  if (searchButton) {
-
-    searchButton.addEventListener(
-      "click",
-      function () {
-
-        searchProperty();
-
-      }
-    );
-
-  }
+  searchButton.addEventListener(
+    "click",
+    searchProperty
+  );
 
 
   /* ===================================================
      ENTER KEY
   =================================================== */
 
-  if (pinInput) {
+  pinInput.addEventListener(
+    "keydown",
+    function (event) {
 
-    pinInput.addEventListener(
-      "keydown",
-      function (event) {
+      if (event.key === "Enter") {
 
-        if (event.key === "Enter") {
+        event.preventDefault();
 
-          event.preventDefault();
-
-          searchProperty();
-
-        }
+        searchProperty();
 
       }
-    );
 
-  }
+    }
+  );
 
 
   /* ===================================================
-     MAIN PROPERTY SEARCH
+     MAIN SEARCH FUNCTION
   =================================================== */
 
   async function searchProperty() {
-
-    console.log("Search button clicked.");
 
     const searchValue =
       pinInput.value.trim();
@@ -91,7 +94,7 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!searchValue) {
 
       updateStatus(
-        "Please enter a Property PIN before searching.",
+        "Please enter a Property PIN, Legacy PIN, or Parcel Number.",
         "error"
       );
 
@@ -101,106 +104,222 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
     /* -----------------------------------------------
-       IMMEDIATE VISUAL RESPONSE
+       RESET DISPLAY
     ----------------------------------------------- */
 
     resetResults();
 
 
-    document.getElementById(
-      "searchInput"
-    ).textContent = searchValue;
+    setText(
+      "searchInput",
+      searchValue
+    );
+
+
+    setText(
+      "propertyStatus",
+      "Searching public GIS..."
+    );
 
 
     updateStatus(
-      "Search started. Connecting to public GIS data...",
+      "Searching Cabarrus County public parcel data...",
       "loading"
     );
 
 
-    document.getElementById(
-      "propertyStatus"
-    ).textContent =
-      "Searching...";
-
-
     searchButton.disabled = true;
-
 
     searchButton.textContent =
       "Searching...";
 
 
-    console.log(
-      "Searching for:",
-      searchValue
-    );
-
-
     try {
 
 
-      /*
-        =================================================
-        TEMPORARY TEST
-        =================================================
+      /* ===============================================
+         SEARCH THE PARCEL LAYER
+      =============================================== */
 
-        This confirms that the button and JavaScript
-        workflow are working BEFORE we troubleshoot
-        the GIS endpoint.
-      */
+      const result =
+        await searchParcel(searchValue);
 
 
-      await new Promise(function (resolve) {
+      /* -----------------------------------------------
+         NO RESULT
+      ----------------------------------------------- */
 
-        setTimeout(resolve, 500);
+      if (!result) {
 
-      });
+        setText(
+          "propertyStatus",
+          "Property Not Found"
+        );
 
+
+        updateStatus(
+          "No matching property was found in the public Cabarrus County parcel data.",
+          "error"
+        );
+
+
+        return;
+
+      }
+
+
+      /* ===============================================
+         PROPERTY FOUND
+      =============================================== */
+
+      const attributes =
+        result.attributes || {};
+
+
+      /* -----------------------------------------------
+         POPULATE PROPERTY PROFILE
+      ----------------------------------------------- */
+
+      setText(
+        "oldPinResult",
+        getValue(
+          attributes,
+          [
+            "OLDPIN",
+            "OldPIN"
+          ]
+        )
+      );
+
+
+      setText(
+        "pin14Result",
+        getValue(
+          attributes,
+          [
+            "PIN14"
+          ]
+        )
+      );
+
+
+      setText(
+        "ownerResult",
+        getValue(
+          attributes,
+          [
+            "OWNER",
+            "AcctName1",
+            "OWNERNAME",
+            "OwnerName"
+          ]
+        )
+      );
+
+
+      setText(
+        "propertyStatus",
+        "Property Identified"
+      );
+
+
+      /* -----------------------------------------------
+         ACTIVATE WORKFLOW
+      ----------------------------------------------- */
+
+      activateStep("step1");
+
+
+      if (result.geometry) {
+
+        activateStep("step2");
+
+      }
+
+
+      /* -----------------------------------------------
+         SUCCESS MESSAGE
+      ----------------------------------------------- */
 
       updateStatus(
-        "The Search button is working. Next, we need to reconnect the confirmed working Cabarrus GIS property search.",
+        "Property identified successfully using Cabarrus County public GIS data.",
         "success"
       );
 
 
-      document.getElementById(
-        "propertyStatus"
-      ).textContent =
-        "Search button working";
+      /* -----------------------------------------------
+         LOG RESULT FOR DEVELOPMENT
+      ----------------------------------------------- */
+
+      console.log(
+        "Property result:",
+        result
+      );
 
 
       console.log(
-        "Search button and JavaScript are working."
+        "Property attributes:",
+        attributes
       );
+
+
+      console.log(
+        "Parcel geometry:",
+        result.geometry
+      );
+
+
+      /* ===============================================
+         TEMPORARY JURISDICTION MESSAGE
+      =============================================== */
+
+      if (result.geometry) {
+
+        setText(
+          "municipalJurisdiction",
+          "Parcel geometry retrieved"
+        );
+
+
+        setText(
+          "geographicStatus",
+          "Ready for jurisdiction screening"
+        );
+
+
+        setText(
+          "buildingCodeJurisdiction",
+          "Municipal and building code authority screening will be added next."
+        );
+
+      }
 
 
     } catch (error) {
 
 
       console.error(
-        "Search error:",
+        "GIS Search Error:",
         error
       );
 
 
-      updateStatus(
-        "An error occurred while processing the search.",
-        "error"
+      setText(
+        "propertyStatus",
+        "GIS Search Error"
       );
 
 
-      document.getElementById(
-        "propertyStatus"
-      ).textContent =
-        "Search Error";
+      updateStatus(
+        "Unable to complete the public GIS search. See the browser console for details.",
+        "error"
+      );
 
 
     } finally {
 
 
       searchButton.disabled = false;
-
 
       searchButton.textContent =
         "🔎 Search GIS";
@@ -211,12 +330,205 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
   /* ===================================================
+     SEARCH PARCEL FUNCTION
+  =================================================== */
+
+  async function searchParcel(searchValue) {
+
+
+    /*
+      We will try several possible identifiers.
+
+      The public Tax Parcels layer includes
+      PIN14 and OLDPIN fields.
+    */
+
+    const searches = [
+
+      {
+        field: "PIN14",
+        where:
+          `PIN14 = '${escapeSql(searchValue)}'`
+      },
+
+      {
+        field: "OLDPIN",
+        where:
+          `OLDPIN = '${escapeSql(searchValue)}'`
+      },
+
+      {
+        field: "PIN14",
+        where:
+          `PIN14 LIKE '%${escapeSql(searchValue)}%'`
+      }
+
+    ];
+
+
+    for (const search of searches) {
+
+
+      console.log(
+        "Trying GIS search:",
+        search.where
+      );
+
+
+      const params =
+        new URLSearchParams({
+
+          f: "json",
+
+          where:
+            search.where,
+
+          outFields:
+            "*",
+
+          returnGeometry:
+            "true",
+
+          resultRecordCount:
+            "10"
+
+        });
+
+
+      const url =
+        `${TAX_PARCELS_URL}?${params.toString()}`;
+
+
+      const response =
+        await fetch(url);
+
+
+      if (!response.ok) {
+
+        console.warn(
+          "GIS request failed:",
+          response.status
+        );
+
+        continue;
+
+      }
+
+
+      const data =
+        await response.json();
+
+
+      console.log(
+        "GIS response:",
+        data
+      );
+
+
+      if (data.error) {
+
+        console.warn(
+          "GIS returned an error:",
+          data.error
+        );
+
+        continue;
+
+      }
+
+
+      if (
+        data.features &&
+        data.features.length > 0
+      ) {
+
+        return data.features[0];
+
+      }
+
+    }
+
+
+    return null;
+
+  }
+
+
+  /* ===================================================
+     GET ATTRIBUTE VALUE
+  =================================================== */
+
+  function getValue(
+    attributes,
+    fieldNames
+  ) {
+
+    for (const field of fieldNames) {
+
+      const value =
+        attributes[field];
+
+
+      if (
+        value !== undefined &&
+        value !== null &&
+        value !== ""
+      ) {
+
+        return value;
+
+      }
+
+    }
+
+
+    return "—";
+
+  }
+
+
+  /* ===================================================
+     SET TEXT SAFELY
+  =================================================== */
+
+  function setText(
+    id,
+    value
+  ) {
+
+    const element =
+      document.getElementById(id);
+
+
+    if (element) {
+
+      element.textContent =
+        value ?? "—";
+
+    }
+
+  }
+
+
+  /* ===================================================
+     ESCAPE SQL
+  =================================================== */
+
+  function escapeSql(value) {
+
+    return String(value)
+      .replace(/'/g, "''");
+
+  }
+
+
+  /* ===================================================
      UPDATE STATUS
   =================================================== */
 
   function updateStatus(
     message,
-    statusType
+    type
   ) {
 
     if (statusMessage) {
@@ -236,13 +548,30 @@ document.addEventListener("DOMContentLoaded", function () {
       );
 
 
-      if (statusType) {
+      if (type) {
 
-        statusDot.classList.add(
-          statusType
-        );
+        statusDot.classList.add(type);
 
       }
+
+    }
+
+  }
+
+
+  /* ===================================================
+     ACTIVATE WORKFLOW STEP
+  =================================================== */
+
+  function activateStep(stepId) {
+
+    const step =
+      document.getElementById(stepId);
+
+
+    if (step) {
+
+      step.classList.add("active");
 
     }
 
@@ -269,59 +598,27 @@ document.addEventListener("DOMContentLoaded", function () {
 
     fields.forEach(function (id) {
 
-      const element =
-        document.getElementById(id);
-
-
-      if (element) {
-
-        element.textContent = "—";
-
-      }
+      setText(id, "—");
 
     });
 
 
-    const propertyStatus =
-      document.getElementById(
-        "propertyStatus"
-      );
+    setText(
+      "propertyStatus",
+      "Searching..."
+    );
 
 
-    if (propertyStatus) {
-
-      propertyStatus.textContent =
-        "Searching...";
-
-    }
+    setText(
+      "geographicStatus",
+      "Waiting for property identification"
+    );
 
 
-    const geographicStatus =
-      document.getElementById(
-        "geographicStatus"
-      );
-
-
-    if (geographicStatus) {
-
-      geographicStatus.textContent =
-        "Waiting for property identification";
-
-    }
-
-
-    const buildingCodeJurisdiction =
-      document.getElementById(
-        "buildingCodeJurisdiction"
-      );
-
-
-    if (buildingCodeJurisdiction) {
-
-      buildingCodeJurisdiction.textContent =
-        "Municipal location has not yet been identified.";
-
-    }
+    setText(
+      "buildingCodeJurisdiction",
+      "Municipal location has not yet been identified."
+    );
 
 
     document
