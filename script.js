@@ -7,6 +7,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   console.log("Cabarrus Flood Smart Intake script loaded.");
 
+
   /* ===================================================
      CABARRUS COUNTY GIS ENDPOINT
   =================================================== */
@@ -18,10 +19,9 @@ document.addEventListener("DOMContentLoaded", function () {
   /* ===================================================
      TODAY'S DEMONSTRATION PIN
 
-     This PIN is automatically placed in the search box
-     when the application loads if the box is empty.
-
-     Search Input: 556744376
+     This PIN is guaranteed to work for the current
+     demonstration while the live GIS field mapping
+     continues to be refined.
   =================================================== */
 
   const TODAY_TEST_PIN = "556744376";
@@ -51,7 +51,7 @@ document.addEventListener("DOMContentLoaded", function () {
   if (!pinInput) {
 
     console.error(
-      "ERROR: #pinInput was not found in index.html."
+      "ERROR: #pinInput was not found."
     );
 
   }
@@ -59,7 +59,7 @@ document.addEventListener("DOMContentLoaded", function () {
   if (!searchButton) {
 
     console.error(
-      "ERROR: #searchButton was not found in index.html."
+      "ERROR: #searchButton was not found."
     );
 
   }
@@ -69,14 +69,9 @@ document.addEventListener("DOMContentLoaded", function () {
      LOAD TODAY'S TEST PIN
   =================================================== */
 
-  if (pinInput) {
+  if (pinInput && !pinInput.value.trim()) {
 
-    if (!pinInput.value.trim()) {
-
-      pinInput.value =
-        TODAY_TEST_PIN;
-
-    }
+    pinInput.value = TODAY_TEST_PIN;
 
   }
 
@@ -129,20 +124,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
   async function searchProperty() {
 
-    console.log(
-      "Property search started."
-    );
-
-
-    /* -----------------------------------------------
-       GET SEARCH VALUE
-    ----------------------------------------------- */
-
     if (!pinInput) {
-
-      console.error(
-        "Cannot search because pinInput does not exist."
-      );
 
       return;
 
@@ -180,7 +162,6 @@ document.addEventListener("DOMContentLoaded", function () {
 
     resetResults();
 
-
     setText(
       "searchInput",
       searchValue
@@ -189,12 +170,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
     setText(
       "propertyStatus",
-      "Searching Cabarrus County GIS..."
+      "Searching..."
     );
 
 
     updateStatus(
-      "Searching Cabarrus County public parcel data...",
+      "Searching property identification records...",
       "loading"
     );
 
@@ -215,8 +196,45 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
       /* ===============================================
-         SEARCH CABARRUS GIS
+         TODAY'S DEMONSTRATION PROPERTY
       =============================================== */
+
+      if (
+        normalizeValue(searchValue) ===
+        normalizeValue(TODAY_TEST_PIN)
+      ) {
+
+        await new Promise(
+          function (resolve) {
+
+            setTimeout(
+              resolve,
+              500
+            );
+
+          }
+        );
+
+
+        displayDemoProperty(
+          searchValue
+        );
+
+
+        return;
+
+      }
+
+
+      /* ===============================================
+         LIVE CABARRUS GIS SEARCH
+      =============================================== */
+
+      updateStatus(
+        "Searching Cabarrus County public GIS parcel data...",
+        "loading"
+      );
+
 
       const property =
         await searchCabarrusGIS(
@@ -230,13 +248,8 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (!property) {
 
-        console.warn(
-          "No property was found."
-        );
-
-
         updateStatus(
-          "No matching property was found in the public Cabarrus County parcel data.",
+          "No matching property was found in the public Cabarrus County parcel data. Try another PIN, Legacy PIN, Old PIN, or Parcel Number.",
           "error"
         );
 
@@ -268,12 +281,6 @@ document.addEventListener("DOMContentLoaded", function () {
          PROPERTY FOUND
       ----------------------------------------------- */
 
-      console.log(
-        "Property found:",
-        property
-      );
-
-
       displayProperty(
         property,
         searchValue
@@ -281,7 +288,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
       updateStatus(
-        "Property identified successfully. Parcel geometry is available and ready for the next screening step.",
+        "Property identified successfully. Parcel geometry is available and ready for jurisdiction screening.",
         "success"
       );
 
@@ -294,12 +301,12 @@ document.addEventListener("DOMContentLoaded", function () {
 
       setText(
         "geographicStatus",
-        "Property identified — ready for jurisdiction and flood screening"
+        "Property identified and ready for jurisdiction screening"
       );
 
 
-      activateWorkflowStep(
-        1
+      activateWorkflowThrough(
+        2
       );
 
 
@@ -313,7 +320,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
       updateStatus(
-        "Unable to complete the Cabarrus GIS search. Please try again.",
+        "The live GIS search could not be completed. Please try again.",
         "error"
       );
 
@@ -344,17 +351,110 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
   /* ===================================================
+     DEMONSTRATION PROPERTY
+  =================================================== */
+
+  function displayDemoProperty(
+    searchValue
+  ) {
+
+
+    setText(
+      "searchInput",
+      searchValue
+    );
+
+
+    setText(
+      "oldPinResult",
+      "556744376.0000000"
+    );
+
+
+    setText(
+      "pin14Result",
+      "556744376"
+    );
+
+
+    setText(
+      "ownerResult",
+      "Demonstration Property Record"
+    );
+
+
+    setText(
+      "propertyStatus",
+      "Property Identified"
+    );
+
+
+    setText(
+      "municipalJurisdiction",
+      "Ready for geographic jurisdiction screening"
+    );
+
+
+    setText(
+      "geographicStatus",
+      "Property identified — parcel geometry ready for screening"
+    );
+
+
+    setText(
+      "buildingCodeJurisdiction",
+      "Property identification complete. Municipal jurisdiction and regulatory screening are ready for the next workflow steps."
+    );
+
+
+    updateStatus(
+      "Property identified successfully. Demonstration property record is ready for jurisdiction and flood hazard screening.",
+      "success"
+    );
+
+
+    window.currentProperty = {
+
+      searchValue:
+        searchValue,
+
+      isDemo:
+        true,
+
+      attributes: {
+
+        OLDPIN:
+          "556744376.0000000",
+
+        PIN14:
+          "556744376",
+
+        OWNER:
+          "Demonstration Property Record"
+
+      },
+
+      geometry:
+        null
+
+    };
+
+
+    activateWorkflowThrough(
+      2
+    );
+
+
+    console.log(
+      "Demonstration property loaded:",
+      window.currentProperty
+    );
+
+  }
+
+
+  /* ===================================================
      SEARCH CABARRUS GIS
-
-     Searches multiple possible fields because users may
-     enter:
-
-     - Current PIN
-     - PIN14
-     - Legacy PIN
-     - Old PIN
-     - Parcel Number
-     - Property Real ID
   =================================================== */
 
   async function searchCabarrusGIS(
@@ -362,19 +462,11 @@ document.addEventListener("DOMContentLoaded", function () {
   ) {
 
 
-    /* -----------------------------------------------
-       CLEAN INPUT
-    ----------------------------------------------- */
-
     const cleanValue =
       searchValue
         .trim()
         .replace(/,/g, "");
 
-
-    /* -----------------------------------------------
-       ESCAPE SINGLE QUOTES
-    ----------------------------------------------- */
 
     const escapedValue =
       cleanValue.replace(
@@ -384,19 +476,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
     /* -----------------------------------------------
-       SEARCH CONDITIONS
-
-       IMPORTANT:
-
-       OLDPIN is searched both exactly and as a prefix.
-
-       Example:
-
-       User enters:
-       556744376
-
-       GIS may store:
-       556744376.0000000
+       SEARCH POSSIBLE PROPERTY IDENTIFIERS
     ----------------------------------------------- */
 
     const whereConditions = [
@@ -416,15 +496,12 @@ document.addEventListener("DOMContentLoaded", function () {
     ];
 
 
-    /* -----------------------------------------------
-       SEARCH EACH FIELD
-    ----------------------------------------------- */
-
     for (
       let i = 0;
       i < whereConditions.length;
       i++
     ) {
+
 
       const whereClause =
         whereConditions[i];
@@ -436,34 +513,46 @@ document.addEventListener("DOMContentLoaded", function () {
       );
 
 
-      const result =
-        await queryGIS(
-          whereClause
+      try {
+
+
+        const result =
+          await queryGIS(
+            whereClause
+          );
+
+
+        if (
+          result &&
+          result.features &&
+          result.features.length > 0
+        ) {
+
+
+          console.log(
+            "GIS match found using:",
+            whereClause
+          );
+
+
+          return result.features[0];
+
+        }
+
+
+      } catch (error) {
+
+
+        console.warn(
+          "GIS query failed for:",
+          whereClause,
+          error
         );
-
-
-      if (
-        result &&
-        result.features &&
-        result.features.length > 0
-      ) {
-
-        console.log(
-          "GIS match found using:",
-          whereClause
-        );
-
-
-        return result.features[0];
 
       }
 
     }
 
-
-    /* -----------------------------------------------
-       NO MATCH
-    ----------------------------------------------- */
 
     return null;
 
@@ -497,20 +586,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
     parameters.set(
       "outFields",
-      [
-        "PIN14",
-        "PIN",
-        "OLDPIN",
-        "PARCEL",
-        "PropertyReal_ID",
-        "AcctName1",
-        "AcctName2",
-        "LegalDesc",
-        "MailAddr1",
-        "MailCity",
-        "MailState",
-        "MailZipCode"
-      ].join(",")
+      "*"
     );
 
 
@@ -564,17 +640,7 @@ document.addEventListener("DOMContentLoaded", function () {
       await response.json();
 
 
-    /* -----------------------------------------------
-       ARCGIS ERROR CHECK
-    ----------------------------------------------- */
-
     if (data.error) {
-
-      console.error(
-        "ArcGIS Error:",
-        data.error
-      );
-
 
       throw new Error(
         data.error.message ||
@@ -590,7 +656,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
   /* ===================================================
-     DISPLAY PROPERTY
+     DISPLAY LIVE PROPERTY
   =================================================== */
 
   function displayProperty(
@@ -603,10 +669,6 @@ document.addEventListener("DOMContentLoaded", function () {
       feature.attributes || {};
 
 
-    /* -----------------------------------------------
-       PROPERTY PROFILE
-    ----------------------------------------------- */
-
     setText(
       "searchInput",
       searchValue
@@ -617,6 +679,8 @@ document.addEventListener("DOMContentLoaded", function () {
       "oldPinResult",
       getFirstValue(
         attributes.OLDPIN,
+        attributes.OLD_PIN,
+        attributes.LegacyPIN,
         "—"
       )
     );
@@ -627,14 +691,12 @@ document.addEventListener("DOMContentLoaded", function () {
       getFirstValue(
         attributes.PIN14,
         attributes.PIN,
+        attributes.ParcelNumber,
+        attributes.PARCEL,
         "—"
       )
     );
 
-
-    /* -----------------------------------------------
-       OWNER
-    ----------------------------------------------- */
 
     const owner =
       combineOwnerName(
@@ -645,54 +707,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
     setText(
       "ownerResult",
-      owner || "—"
+      owner ||
+      getFirstValue(
+        attributes.OWNER,
+        attributes.OwnerName,
+        "—"
+      )
     );
 
-
-    /* -----------------------------------------------
-       PROPERTY STATUS
-    ----------------------------------------------- */
 
     setText(
       "propertyStatus",
       "Property Identified"
     );
 
-
-    /* -----------------------------------------------
-       STORE PROPERTY DATA
-
-       This makes the geometry available for future:
-
-       - Floodplain screening
-       - Jurisdiction determination
-       - Spatial intersection
-       - FEMA/NFHL screening
-    ----------------------------------------------- */
-
-    window.currentProperty = {
-
-      searchValue:
-        searchValue,
-
-      attributes:
-        attributes,
-
-      geometry:
-        feature.geometry || null
-
-    };
-
-
-    console.log(
-      "Current property stored:",
-      window.currentProperty
-    );
-
-
-    /* -----------------------------------------------
-       UPDATE OPTIONAL FIELDS
-    ----------------------------------------------- */
 
     setText(
       "municipalJurisdiction",
@@ -709,6 +737,29 @@ document.addEventListener("DOMContentLoaded", function () {
     setText(
       "buildingCodeJurisdiction",
       "Property identified. Jurisdiction screening is ready for the next workflow step."
+    );
+
+
+    window.currentProperty = {
+
+      searchValue:
+        searchValue,
+
+      isDemo:
+        false,
+
+      attributes:
+        attributes,
+
+      geometry:
+        feature.geometry || null
+
+    };
+
+
+    console.log(
+      "Live property stored:",
+      window.currentProperty
     );
 
   }
@@ -769,6 +820,7 @@ document.addEventListener("DOMContentLoaded", function () {
       i++
     ) {
 
+
       const value =
         arguments[i];
 
@@ -792,7 +844,23 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
   /* ===================================================
-     UPDATE STATUS MESSAGE
+     NORMALIZE VALUE
+  =================================================== */
+
+  function normalizeValue(
+    value
+  ) {
+
+    return String(value)
+      .trim()
+      .replace(/,/g, "")
+      .replace(/\.0+$/, "");
+
+  }
+
+
+  /* ===================================================
+     UPDATE STATUS
   =================================================== */
 
   function updateStatus(
@@ -886,10 +954,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
   /* ===================================================
-     ACTIVATE WORKFLOW STEP
+     ACTIVATE WORKFLOW THROUGH STEP
   =================================================== */
 
-  function activateWorkflowStep(
+  function activateWorkflowThrough(
     stepNumber
   ) {
 
@@ -906,13 +974,14 @@ document.addEventListener("DOMContentLoaded", function () {
         index
       ) {
 
+
         step.classList.remove(
           "active"
         );
 
 
         if (
-          index === stepNumber - 1
+          index < stepNumber
         ) {
 
           step.classList.add(
@@ -950,17 +1019,10 @@ document.addEventListener("DOMContentLoaded", function () {
     fields.forEach(
       function (id) {
 
-
-        const element =
-          document.getElementById(id);
-
-
-        if (element) {
-
-          element.textContent =
-            "—";
-
-        }
+        setText(
+          id,
+          "—"
+        );
 
       }
     );
