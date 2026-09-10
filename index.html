@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Cabarrus Flood Smart Intake</title>
+
+  <link rel="stylesheet" href="./style.css">
+</head>
+
+<body>
+
+  <!-- =====================================================
+       APPLICATION HEADER
+  ====================================================== -->
+
+  <header class="app-header">
+    <div>
+      <h1>Cabarrus Flood Smart Intake</h1>
+
+      <p>
+        Property Identification &amp; Floodplain Screening Pilot
+      </p>
+    </div>
+  </header>
+
+
+  <!-- =====================================================
+       MAIN APPLICATION
+  ====================================================== -->
+
+  <main class="container">
+
+
+    <!-- ===================================================
+         PROPERTY SEARCH
+    ==================================================== -->
+
+    <section class="search-card">
+
+      <h2>Property Search</h2>
+
+      <p class="instructions">
+        Enter a Cabarrus County Property PIN, Legacy PIN, or Parcel Number.
+      </p>
+
+
+      <div class="search-row">
+
+        <input
+          type="text"
+          id="pinInput"
+          placeholder="Example: 556744376"
+        >
+
+        <button id="searchButton">
+          🔎 Search GIS
+        </button>
+
+      </div>
+
+
+      <p class="example">
+        Test PIN: <strong>556744376</strong>
+      </p>
+
+    </section>
+
+
+
+    <!-- ===================================================
+         SMART STATUS
+    ==================================================== -->
+
+    <section class="status-card">
+
+      <div class="status-header">
+
+        <span class="status-dot"></span>
+
+        <span>
+          SMART PROPERTY IDENTIFICATION
+        </span>
+
+      </div>
+
+
+      <div id="statusMessage">
+        Enter a Property PIN to begin.
+      </div>
+
+    </section>
+
+
+
+    <!-- ===================================================
+         PROPERTY PROFILE
+    ==================================================== -->
+
+    <section class="property-card">
+
+      <h2>Property Profile</h2>
+
+
+      <div class="property-grid">
+
+
+        <!-- SEARCH INPUT -->
+
+        <div class="property-item">
+
+          <span class="label">
+            Search Input
+          </span>
+
+          <span id="searchInput">
+            —
+          </span>
+
+        </div>
+
+
+
+        <!-- LEGACY PIN / OLDPIN -->
+
+        <div class="property-item">
+
+          <span class="label">
+            Legacy PIN / OLDPIN
+          </span>
+
+          <span id="oldPinResult">
+            —
+          </span>
+
+        </div>
+
+
+
+        <!-- CURRENT PIN14 -->
+
+        <div class="property-item">
+
+          <span class="label">
+            Current PIN14
+          </span>
+
+          <span id="pin14Result">
+            —
+          </span>
+
+        </div>
+
+
+
+        <!-- OWNER -->
+
+        <div class="property-item">
+
+          <span class="label">
+            Owner
+          </span>
+
+          <span id="ownerResult">
+            —
+          </span>
+
+        </div>
+
+
+
+        <!-- PROPERTY STATUS -->
+
+        <div class="property-item">
+
+          <span class="label">
+            Property Status
+          </span>
+
+          <span id="propertyStatus">
+            Waiting for search
+          </span>
+
+        </div>
+
+
+      </div>
+
+    </section>
+
+
+
+    <!-- ===================================================
+         FLOOD SMART INTAKE WORKFLOW
+    ==================================================== -->
+
+    <section class="workflow-card">
+
+      <h2>Flood Smart Intake Workflow</h2>
+
+
+      <div class="workflow">
+
+
+        <!-- STEP 1 -->
+
+        <div
+          class="workflow-step active"
+          id="step1"
+        >
+
+          <div class="step-number">
+            1
+          </div>
+
+
+          <div class="step-content">
+
+            <strong>
+              Property Identified
+            </strong>
+
+            <span>
+              Identify and validate the property record.
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="workflow-arrow">
+          ↓
+        </div>
+
+
+
+        <!-- STEP 2 -->
+
+        <div
+          class="workflow-step"
+          id="step2"
+        >
+
+          <div class="step-number">
+            2
+          </div>
+
+
+          <div class="step-content">
+
+            <strong>
+              Parcel Geometry
+            </strong>
+
+            <span>
+              Retrieve and validate parcel geometry.
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="workflow-arrow">
+          ↓
+        </div>
+
+
+
+        <!-- STEP 3 -->
+
+        <div
+          class="workflow-step"
+          id="step3"
+        >
+
+          <div class="step-number">
+            3
+          </div>
+
+
+          <div class="step-content">
+
+            <strong>
+              Jurisdiction Identification
+            </strong>
+
+            <span>
+              Determine applicable jurisdiction and authority.
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="workflow-arrow">
+          ↓
+        </div>
+
+
+
+        <!-- STEP 4 -->
+
+        <div
+          class="workflow-step"
+          id="step4"
+        >
+
+          <div class="step-number">
+            4
+          </div>
+
+
+          <div class="step-content">
+
+            <strong>
+              Flood Hazard Screening
+            </strong>
+
+            <span>
+              Screen the property against flood hazard information.
+            </span>
+
+          </div>
+
+        </div>
+
+
+        <div class="workflow-arrow">
+          ↓
+        </div>
+
+
+
+        <!-- STEP 5 -->
+
+        <div
+          class="workflow-step"
+          id="step5"
+        >
+
+          <div class="step-number">
+            5
+          </div>
+
+
+          <div class="step-content">
+
+            <strong>
+              Smart Regulatory Gate
+            </strong>
+
+            <span>
+              Identify applicable regulatory and permitting requirements.
+            </span>
+
+          </div>
+
+        </div>
+
+
+      </div>
+
+    </section>
+
+
+  </main>
+
+
+
+  <!-- =====================================================
+       JAVASCRIPT
+  ====================================================== -->
+
+  <script src="./script.js"></script>
+
+</body>
+</html>
