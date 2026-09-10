@@ -1,420 +1,548 @@
-// =====================================================
-// CABARRUS FLOOD SMART INTAKE
-// Property Search - Public GIS Services
-// =====================================================
+/* =====================================================
+   GLOBAL
+===================================================== */
 
+* {
+  box-sizing: border-box;
+}
 
-// -----------------------------------------------------
-// PUBLIC CABARRUS COUNTY GIS ENDPOINT
-// -----------------------------------------------------
 
-const GIS_SERVICE =
-  "https://location.cabarruscounty.us/arcgisservices/rest/services/views/landrecords_view/MapServer/3/query";
+body {
+  margin: 0;
 
+  font-family:
+    Arial,
+    Helvetica,
+    sans-serif;
 
-// -----------------------------------------------------
-// PAGE ELEMENTS
-// -----------------------------------------------------
+  background: #eef3f7;
 
-const pinInput = document.getElementById("pinInput");
-const searchButton = document.getElementById("searchButton");
+  color: #1f2933;
+}
 
-const statusMessage = document.getElementById("statusMessage");
 
-const searchInputResult = document.getElementById("searchInput");
-const oldPinResult = document.getElementById("oldPinResult");
-const pin14Result = document.getElementById("pin14Result");
-const ownerResult = document.getElementById("ownerResult");
-const propertyStatus = document.getElementById("propertyStatus");
 
+/* =====================================================
+   APPLICATION HEADER
+===================================================== */
 
-// -----------------------------------------------------
-// SEARCH BUTTON
-// -----------------------------------------------------
+.app-header {
 
-searchButton.addEventListener("click", searchProperty);
+  background: #173f5f;
 
+  color: white;
 
-// Allow ENTER key to search
+  padding: 28px 40px;
 
-pinInput.addEventListener("keydown", function (event) {
-
-  if (event.key === "Enter") {
-
-    searchProperty();
-
-  }
-
-});
-
-
-// -----------------------------------------------------
-// MAIN PROPERTY SEARCH
-// -----------------------------------------------------
-
-async function searchProperty() {
-
-  const searchValue = pinInput.value.trim();
-
-
-  // ---------------------------------------------------
-  // VALIDATE INPUT
-  // ---------------------------------------------------
-
-  if (!searchValue) {
-
-    setStatus(
-      "Please enter a Property PIN, Legacy PIN, or Parcel Number."
-    );
-
-    propertyStatus.textContent = "Waiting for valid input";
-
-    return;
-
-  }
-
-
-  // Display search input
-
-  searchInputResult.textContent = searchValue;
-
-
-  // Reset results
-
-  oldPinResult.textContent = "Searching...";
-  pin14Result.textContent = "Searching...";
-  ownerResult.textContent = "Searching...";
-  propertyStatus.textContent = "Searching...";
-
-
-  // Update interface
-
-  searchButton.disabled = true;
-
-  searchButton.textContent = "Searching...";
-
-
-  setStatus(
-    "Searching Cabarrus County public property records..."
-  );
-
-
-  try {
-
-
-    // -------------------------------------------------
-    // SEARCH MULTIPLE PROPERTY IDENTIFIERS
-    // -------------------------------------------------
-
-    const whereClause = `
-      PIN14 = '${escapeSql(searchValue)}'
-      OR PIN = '${escapeSql(searchValue)}'
-      OR OLDPIN = '${escapeSql(searchValue)}'
-      OR PARCEL = '${escapeSql(searchValue)}'
-      OR PropertyReal_ID = '${escapeSql(searchValue)}'
-    `;
-
-
-    // Remove line breaks
-
-    const cleanWhereClause =
-      whereClause.replace(/\s+/g, " ").trim();
-
-
-    // -------------------------------------------------
-    // BUILD GIS REQUEST
-    // -------------------------------------------------
-
-    const params = new URLSearchParams({
-
-      where: cleanWhereClause,
-
-      outFields:
-        "PIN14,PIN,OLDPIN,PARCEL,PropertyReal_ID,AcctName1,AcctName2",
-
-      returnGeometry: "false",
-
-      resultRecordCount: "10",
-
-      f: "json"
-
-    });
-
-
-    const requestUrl =
-      `${GIS_SERVICE}?${params.toString()}`;
-
-
-    // -------------------------------------------------
-    // SEND REQUEST
-    // -------------------------------------------------
-
-    const response =
-      await fetch(requestUrl);
-
-
-    // Check HTTP response
-
-    if (!response.ok) {
-
-      throw new Error(
-        `GIS service returned HTTP ${response.status}`
-      );
-
-    }
-
-
-    const data =
-      await response.json();
-
-
-    // -------------------------------------------------
-    // CHECK FOR GIS ERROR
-    // -------------------------------------------------
-
-    if (data.error) {
-
-      throw new Error(
-        data.error.message ||
-        "The GIS service returned an error."
-      );
-
-    }
-
-
-    // -------------------------------------------------
-    // CHECK FOR RESULTS
-    // -------------------------------------------------
-
-    if (
-      !data.features ||
-      data.features.length === 0
-    ) {
-
-      handlePropertyNotFound(searchValue);
-
-      return;
-
-    }
-
-
-    // -------------------------------------------------
-    // USE FIRST MATCH
-    // -------------------------------------------------
-
-    const property =
-      data.features[0].attributes;
-
-
-    displayProperty(property);
-
-
-  }
-
-
-  // ---------------------------------------------------
-  // HANDLE ERRORS
-  // ---------------------------------------------------
-
-  catch (error) {
-
-    console.error(
-      "Cabarrus GIS Search Error:",
-      error
-    );
-
-
-    setStatus(
-      "Unable to complete the GIS search. Please try again."
-    );
-
-
-    oldPinResult.textContent = "—";
-
-    pin14Result.textContent = "—";
-
-    ownerResult.textContent = "—";
-
-    propertyStatus.textContent =
-      "GIS Search Error";
-
-  }
-
-
-  // ---------------------------------------------------
-  // RESTORE BUTTON
-  // ---------------------------------------------------
-
-  finally {
-
-    searchButton.disabled = false;
-
-    searchButton.textContent =
-      "🔎 Search GIS";
-
-  }
+  border-bottom: 5px solid #2f7da8;
 
 }
 
 
-// =====================================================
-// DISPLAY PROPERTY
-// =====================================================
+.app-header h1 {
 
-function displayProperty(property) {
+  margin: 0 0 6px 0;
 
+  font-size: 30px;
 
-  // ---------------------------------------------------
-  // PIN14
-  // ---------------------------------------------------
-
-  pin14Result.textContent =
-    property.PIN14 || "Not Available";
+}
 
 
-  // ---------------------------------------------------
-  // LEGACY PIN
-  // ---------------------------------------------------
+.app-header p {
 
-  oldPinResult.textContent =
-    property.OLDPIN ||
-    property.PIN ||
-    "Not Available";
+  margin: 0;
 
+  color: #d7e7f2;
 
-  // ---------------------------------------------------
-  // OWNER
-  // ---------------------------------------------------
+  font-size: 16px;
 
-  const ownerParts = [];
+}
 
 
-  if (property.AcctName1) {
 
-    ownerParts.push(property.AcctName1);
+/* =====================================================
+   MAIN CONTAINER
+===================================================== */
+
+.container {
+
+  max-width: 1100px;
+
+  margin: 30px auto;
+
+  padding: 0 20px 40px;
+
+}
+
+
+
+/* =====================================================
+   CARDS
+===================================================== */
+
+.search-card,
+.status-card,
+.property-card,
+.jurisdiction-card,
+.workflow-card {
+
+  background: white;
+
+  border-radius: 10px;
+
+  padding: 24px;
+
+  margin-bottom: 22px;
+
+  box-shadow:
+    0 3px 12px
+    rgba(0, 0, 0, 0.12);
+
+}
+
+
+
+/* =====================================================
+   HEADINGS
+===================================================== */
+
+h2 {
+
+  margin-top: 0;
+
+  color: #173f5f;
+
+}
+
+
+
+/* =====================================================
+   PROPERTY SEARCH
+===================================================== */
+
+.instructions {
+
+  color: #52616b;
+
+}
+
+
+.search-row {
+
+  display: flex;
+
+  gap: 10px;
+
+  margin-top: 18px;
+
+}
+
+
+#pinInput {
+
+  flex: 1;
+
+  padding: 14px;
+
+  font-size: 18px;
+
+  border: 2px solid #cbd5dc;
+
+  border-radius: 6px;
+
+}
+
+
+#pinInput:focus {
+
+  outline: none;
+
+  border-color: #2f7da8;
+
+}
+
+
+#searchButton {
+
+  background: #1976a8;
+
+  color: white;
+
+  border: none;
+
+  border-radius: 6px;
+
+  padding: 14px 22px;
+
+  font-size: 16px;
+
+  font-weight: bold;
+
+  cursor: pointer;
+
+  min-width: 165px;
+
+}
+
+
+#searchButton:hover {
+
+  background: #125b82;
+
+}
+
+
+#searchButton:disabled {
+
+  background: #8ba7b8;
+
+  cursor: wait;
+
+}
+
+
+.example {
+
+  color: #687780;
+
+  margin-bottom: 0;
+
+}
+
+
+
+/* =====================================================
+   SMART STATUS
+===================================================== */
+
+.status-card {
+
+  border-left: 6px solid #2f7da8;
+
+}
+
+
+.status-header {
+
+  font-size: 13px;
+
+  font-weight: bold;
+
+  color: #52616b;
+
+  margin-bottom: 10px;
+
+}
+
+
+.status-dot {
+
+  display: inline-block;
+
+  width: 10px;
+
+  height: 10px;
+
+  background: #f0a500;
+
+  border-radius: 50%;
+
+  margin-right: 8px;
+
+}
+
+
+.status-dot.success {
+
+  background: #2e9b57;
+
+}
+
+
+.status-dot.error {
+
+  background: #c0392b;
+
+}
+
+
+.status-dot.loading {
+
+  background: #1976a8;
+
+}
+
+
+#statusMessage {
+
+  font-size: 18px;
+
+  color: #173f5f;
+
+}
+
+
+
+/* =====================================================
+   PROPERTY PROFILE
+===================================================== */
+
+.property-grid {
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, 1fr);
+
+  gap: 15px;
+
+}
+
+
+.property-item {
+
+  background: #f4f7f9;
+
+  padding: 16px;
+
+  border-radius: 6px;
+
+  border-left: 4px solid #2f7da8;
+
+}
+
+
+
+/* =====================================================
+   JURISDICTION PROFILE
+===================================================== */
+
+.jurisdiction-grid {
+
+  display: grid;
+
+  grid-template-columns:
+    repeat(2, 1fr);
+
+  gap: 15px;
+
+}
+
+
+.jurisdiction-item {
+
+  background: #f4f7f9;
+
+  padding: 16px;
+
+  border-radius: 6px;
+
+  border-left: 4px solid #2f7da8;
+
+}
+
+
+.full-width {
+
+  grid-column: 1 / -1;
+
+}
+
+
+
+/* =====================================================
+   LABELS
+===================================================== */
+
+.label {
+
+  display: block;
+
+  font-size: 12px;
+
+  font-weight: bold;
+
+  text-transform: uppercase;
+
+  color: #687780;
+
+  margin-bottom: 7px;
+
+}
+
+
+
+/* =====================================================
+   WORKFLOW
+===================================================== */
+
+.workflow {
+
+  max-width: 700px;
+
+  margin: auto;
+
+}
+
+
+.workflow-step {
+
+  display: flex;
+
+  align-items: center;
+
+  gap: 15px;
+
+  background: #e8f1f6;
+
+  color: #173f5f;
+
+  padding: 16px 20px;
+
+  border-radius: 6px;
+
+  border-left: 5px solid #aab9c4;
+
+  transition:
+    0.2s ease;
+
+}
+
+
+.workflow-step.active {
+
+  background: #d9edf7;
+
+  border-left-color: #1976a8;
+
+}
+
+
+.step-number {
+
+  display: flex;
+
+  align-items: center;
+
+  justify-content: center;
+
+  width: 34px;
+
+  height: 34px;
+
+  min-width: 34px;
+
+  border-radius: 50%;
+
+  background: #aab9c4;
+
+  color: white;
+
+  font-weight: bold;
+
+}
+
+
+.workflow-step.active .step-number {
+
+  background: #1976a8;
+
+}
+
+
+.step-content {
+
+  display: flex;
+
+  flex-direction: column;
+
+  gap: 4px;
+
+}
+
+
+.step-content strong {
+
+  color: #173f5f;
+
+}
+
+
+.step-content span {
+
+  font-size: 14px;
+
+  color: #52616b;
+
+}
+
+
+.workflow-arrow {
+
+  text-align: center;
+
+  font-size: 24px;
+
+  color: #1976a8;
+
+  padding: 5px;
+
+}
+
+
+
+/* =====================================================
+   MOBILE
+===================================================== */
+
+@media (max-width: 700px) {
+
+  .search-row {
+
+    flex-direction: column;
 
   }
 
 
-  if (property.AcctName2) {
+  #searchButton {
 
-    ownerParts.push(property.AcctName2);
+    width: 100%;
+
+  }
+
+
+  .property-grid,
+  .jurisdiction-grid {
+
+    grid-template-columns: 1fr;
 
   }
 
 
-  ownerResult.textContent =
-    ownerParts.length > 0
-      ? ownerParts.join(" ")
-      : "Not Available";
+  .app-header {
 
-
-  // ---------------------------------------------------
-  // STATUS
-  // ---------------------------------------------------
-
-  propertyStatus.textContent =
-    "Property Identified";
-
-
-  setStatus(
-    "Property successfully identified in Cabarrus County public property records."
-  );
-
-
-  // ---------------------------------------------------
-  // WORKFLOW
-  // ---------------------------------------------------
-
-  activateWorkflowStep(1);
-
-
-  console.log(
-    "Property Record:",
-    property
-  );
-
-}
-
-
-// =====================================================
-// PROPERTY NOT FOUND
-// =====================================================
-
-function handlePropertyNotFound(searchValue) {
-
-
-  oldPinResult.textContent = "—";
-
-  pin14Result.textContent = "—";
-
-  ownerResult.textContent = "—";
-
-
-  propertyStatus.textContent =
-    "Property Not Found";
-
-
-  setStatus(
-    `No matching property was found for "${searchValue}" in the Cabarrus County public property records.`
-  );
-
-}
-
-
-// =====================================================
-// STATUS MESSAGE
-// =====================================================
-
-function setStatus(message) {
-
-  statusMessage.textContent = message;
-
-}
-
-
-// =====================================================
-// WORKFLOW ACTIVATION
-// =====================================================
-
-function activateWorkflowStep(stepNumber) {
-
-
-  const steps =
-    document.querySelectorAll(".workflow-step");
-
-
-  steps.forEach(function (step) {
-
-    step.classList.remove("active");
-
-  });
-
-
-  const activeStep =
-    document.getElementById(
-      `step${stepNumber}`
-    );
-
-
-  if (activeStep) {
-
-    activeStep.classList.add("active");
+    padding: 22px;
 
   }
 
-}
+
+  .container {
+
+    padding-left: 14px;
+
+    padding-right: 14px;
+
+  }
 
 
-// =====================================================
-// BASIC SQL ESCAPING
-// =====================================================
+  .search-card,
+  .status-card,
+  .property-card,
+  .jurisdiction-card,
+  .workflow-card {
 
-function escapeSql(value) {
+    padding: 18px;
 
-  return String(value).replace(
-    /'/g,
-    "''"
-  );
+  }
 
 }
