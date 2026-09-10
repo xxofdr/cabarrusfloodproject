@@ -1,631 +1,420 @@
-document.addEventListener("DOMContentLoaded", function () {
-
-  // =====================================================
-  // CABARRUS FLOOD SMART INTAKE
-  // PROPERTY IDENTIFICATION ENGINE - VERSION 1
-  // =====================================================
+// =====================================================
+// CABARRUS FLOOD SMART INTAKE
+// Property Search - Public GIS Services
+// =====================================================
 
 
-  // =====================================================
-  // HTML ELEMENTS
-  // =====================================================
+// -----------------------------------------------------
+// PUBLIC CABARRUS COUNTY GIS ENDPOINT
+// -----------------------------------------------------
 
-  const searchButton =
-    document.querySelector("#searchButton");
-
-  const propertyInput =
-    document.querySelector("#pinInput");
-
-  const searchInputResult =
-    document.querySelector("#searchInput");
-
-  const oldPinResult =
-    document.querySelector("#oldPinResult");
-
-  const pin14Result =
-    document.querySelector("#pin14Result");
-
-  const ownerResult =
-    document.querySelector("#ownerResult");
-
-  const propertyStatus =
-    document.querySelector("#propertyStatus");
-
-  const statusMessage =
-    document.querySelector("#statusMessage");
+const GIS_SERVICE =
+  "https://location.cabarruscounty.us/arcgisservices/rest/services/views/landrecords_view/MapServer/3/query";
 
 
-  // =====================================================
-  // WORKFLOW ELEMENTS
-  // =====================================================
+// -----------------------------------------------------
+// PAGE ELEMENTS
+// -----------------------------------------------------
 
-  const step1 =
-    document.querySelector("#step1");
+const pinInput = document.getElementById("pinInput");
+const searchButton = document.getElementById("searchButton");
 
-  const step2 =
-    document.querySelector("#step2");
+const statusMessage = document.getElementById("statusMessage");
 
-
-  // =====================================================
-  // VERIFIED CABARRUS COUNTY PUBLIC OPENDATA SERVICE
-  // =====================================================
-
-  const parcelService =
-    "https://location.cabarruscounty.us/arcgisservices/rest/services/OpenData/Tax_Parcels/MapServer/1/query";
+const searchInputResult = document.getElementById("searchInput");
+const oldPinResult = document.getElementById("oldPinResult");
+const pin14Result = document.getElementById("pin14Result");
+const ownerResult = document.getElementById("ownerResult");
+const propertyStatus = document.getElementById("propertyStatus");
 
 
-  // =====================================================
-  // SAFETY CHECK
-  // =====================================================
+// -----------------------------------------------------
+// SEARCH BUTTON
+// -----------------------------------------------------
 
-  if (
-    !searchButton ||
-    !propertyInput ||
-    !searchInputResult ||
-    !oldPinResult ||
-    !pin14Result ||
-    !ownerResult ||
-    !propertyStatus ||
-    !statusMessage
-  ) {
+searchButton.addEventListener("click", searchProperty);
 
-    console.error(
-      "Flood Smart Intake Error: Required HTML elements were not found."
+
+// Allow ENTER key to search
+
+pinInput.addEventListener("keydown", function (event) {
+
+  if (event.key === "Enter") {
+
+    searchProperty();
+
+  }
+
+});
+
+
+// -----------------------------------------------------
+// MAIN PROPERTY SEARCH
+// -----------------------------------------------------
+
+async function searchProperty() {
+
+  const searchValue = pinInput.value.trim();
+
+
+  // ---------------------------------------------------
+  // VALIDATE INPUT
+  // ---------------------------------------------------
+
+  if (!searchValue) {
+
+    setStatus(
+      "Please enter a Property PIN, Legacy PIN, or Parcel Number."
     );
 
+    propertyStatus.textContent = "Waiting for valid input";
+
     return;
-  }
-
-
-  // =====================================================
-  // NORMALIZE PROPERTY IDENTIFIER
-  // =====================================================
-
-  function normalizeSearchValue(value) {
-
-    return value
-      .trim()
-      .replace(/[\s-]/g, "")
-      .replace(/\.0+$/, "");
-  }
-
-
-  // =====================================================
-  // ESCAPE VALUE FOR ARCGIS SQL
-  // =====================================================
-
-  function escapeSqlValue(value) {
-
-    return value.replace(/'/g, "''");
-  }
-
-
-  // =====================================================
-  // UPDATE WORKFLOW
-  // =====================================================
-
-  function updateWorkflow(hasGeometry) {
-
-    if (step1) {
-      step1.classList.add("active");
-    }
-
-    if (step2) {
-
-      if (hasGeometry) {
-        step2.classList.add("active");
-      } else {
-        step2.classList.remove("active");
-      }
-
-    }
 
   }
 
 
-  // =====================================================
-  // RESET PROPERTY RESULTS
-  // =====================================================
+  // Display search input
 
-  function resetResults(searchValue) {
-
-    searchInputResult.textContent =
-      searchValue || "—";
-
-    oldPinResult.textContent =
-      "—";
-
-    pin14Result.textContent =
-      "—";
-
-    ownerResult.textContent =
-      "—";
-
-  }
+  searchInputResult.textContent = searchValue;
 
 
-  // =====================================================
-  // BUILD SEARCH VALUES
-  //
-  // Creates several reasonable variations so that:
-  //
-  // 5567444376
-  // 556-744-4376
-  // 5567444376.00000000
-  //
-  // can be handled intelligently.
-  // =====================================================
+  // Reset results
 
-  function buildSearchValues(searchValue) {
-
-    const normalized =
-      normalizeSearchValue(searchValue);
-
-    const values =
-      new Set();
-
-    if (normalized) {
-
-      values.add(normalized);
-
-      values.add(
-        normalized + ".00000000"
-      );
-
-    }
-
-    return Array.from(values);
-
-  }
+  oldPinResult.textContent = "Searching...";
+  pin14Result.textContent = "Searching...";
+  ownerResult.textContent = "Searching...";
+  propertyStatus.textContent = "Searching...";
 
 
-  // =====================================================
-  // BUILD ARCGIS WHERE CLAUSE
-  // =====================================================
+  // Update interface
 
-  function buildWhereClause(searchValues) {
+  searchButton.disabled = true;
 
-    const conditions = [];
+  searchButton.textContent = "Searching...";
 
-    searchValues.forEach(function (value) {
 
-      const safeValue =
-        escapeSqlValue(value);
+  setStatus(
+    "Searching Cabarrus County public property records..."
+  );
 
-      conditions.push(
-        "PIN = '" + safeValue + "'"
-      );
 
-      conditions.push(
-        "PIN14 = '" + safeValue + "'"
-      );
+  try {
 
-      conditions.push(
-        "OLDPIN = '" + safeValue + "'"
-      );
+
+    // -------------------------------------------------
+    // SEARCH MULTIPLE PROPERTY IDENTIFIERS
+    // -------------------------------------------------
+
+    const whereClause = `
+      PIN14 = '${escapeSql(searchValue)}'
+      OR PIN = '${escapeSql(searchValue)}'
+      OR OLDPIN = '${escapeSql(searchValue)}'
+      OR PARCEL = '${escapeSql(searchValue)}'
+      OR PropertyReal_ID = '${escapeSql(searchValue)}'
+    `;
+
+
+    // Remove line breaks
+
+    const cleanWhereClause =
+      whereClause.replace(/\s+/g, " ").trim();
+
+
+    // -------------------------------------------------
+    // BUILD GIS REQUEST
+    // -------------------------------------------------
+
+    const params = new URLSearchParams({
+
+      where: cleanWhereClause,
+
+      outFields:
+        "PIN14,PIN,OLDPIN,PARCEL,PropertyReal_ID,AcctName1,AcctName2",
+
+      returnGeometry: "false",
+
+      resultRecordCount: "10",
+
+      f: "json"
 
     });
 
-    return conditions.join(" OR ");
 
-  }
-
-
-  // =====================================================
-  // SEARCH FUNCTION
-  // =====================================================
-
-  async function searchProperty() {
-
-    const originalSearchValue =
-      propertyInput.value.trim();
+    const requestUrl =
+      `${GIS_SERVICE}?${params.toString()}`;
 
 
-    // =================================================
-    // VALIDATE SEARCH
-    // =================================================
+    // -------------------------------------------------
+    // SEND REQUEST
+    // -------------------------------------------------
 
-    if (!originalSearchValue) {
+    const response =
+      await fetch(requestUrl);
 
-      statusMessage.textContent =
-        "Please enter a Property PIN, Legacy PIN, or Parcel Number.";
 
-      propertyStatus.textContent =
-        "Waiting for valid search input";
+    // Check HTTP response
 
-      propertyInput.focus();
+    if (!response.ok) {
+
+      throw new Error(
+        `GIS service returned HTTP ${response.status}`
+      );
+
+    }
+
+
+    const data =
+      await response.json();
+
+
+    // -------------------------------------------------
+    // CHECK FOR GIS ERROR
+    // -------------------------------------------------
+
+    if (data.error) {
+
+      throw new Error(
+        data.error.message ||
+        "The GIS service returned an error."
+      );
+
+    }
+
+
+    // -------------------------------------------------
+    // CHECK FOR RESULTS
+    // -------------------------------------------------
+
+    if (
+      !data.features ||
+      data.features.length === 0
+    ) {
+
+      handlePropertyNotFound(searchValue);
 
       return;
-    }
-
-
-    // =================================================
-    // NORMALIZE SEARCH
-    // =================================================
-
-    const normalizedSearchValue =
-      normalizeSearchValue(originalSearchValue);
-
-    const searchValues =
-      buildSearchValues(originalSearchValue);
-
-
-    // =================================================
-    // START SEARCH
-    // =================================================
-
-    searchButton.disabled =
-      true;
-
-    searchButton.textContent =
-      "Searching...";
-
-
-    statusMessage.textContent =
-      "Searching Cabarrus County public property GIS...";
-
-
-    propertyStatus.textContent =
-      "Searching GIS...";
-
-
-    resetResults(originalSearchValue);
-
-
-    try {
-
-
-      // ===============================================
-      // BUILD WHERE CLAUSE
-      // ===============================================
-
-      const whereClause =
-        buildWhereClause(searchValues);
-
-
-      // ===============================================
-      // QUERY PARAMETERS
-      // ===============================================
-
-      const params =
-        new URLSearchParams({
-
-          where: whereClause,
-
-          outFields:
-            "PIN14,PIN,OLDPIN,AcctName1,AcctName2,CALCULATED_ACREAGE,PropertyReal_ID,PARCEL",
-
-          returnGeometry:
-            "true",
-
-          outSR:
-            "4326",
-
-          f:
-            "json"
-
-        });
-
-
-      // ===============================================
-      // BUILD REQUEST URL
-      // ===============================================
-
-      const requestURL =
-        parcelService +
-        "?" +
-        params.toString();
-
-
-      console.log(
-        "Cabarrus OpenData GIS Request:",
-        requestURL
-      );
-
-
-      // ===============================================
-      // CALL PUBLIC GIS SERVICE
-      // ===============================================
-
-      const response =
-        await fetch(requestURL);
-
-
-      if (!response.ok) {
-
-        throw new Error(
-          "GIS server returned HTTP " +
-          response.status
-        );
-
-      }
-
-
-      const data =
-        await response.json();
-
-
-      console.log(
-        "Cabarrus OpenData GIS Response:",
-        data
-      );
-
-
-      // ===============================================
-      // GIS ERROR CHECK
-      // ===============================================
-
-      if (data.error) {
-
-        throw new Error(
-          data.error.message ||
-          "Cabarrus GIS returned an error."
-        );
-
-      }
-
-
-      // ===============================================
-      // NO PROPERTY FOUND
-      // ===============================================
-
-      if (
-        !data.features ||
-        data.features.length === 0
-      ) {
-
-        statusMessage.textContent =
-          "No matching property was found in the Cabarrus County public parcel data.";
-
-        propertyStatus.textContent =
-          "Property Not Found";
-
-        updateWorkflow(false);
-
-        return;
-
-      }
-
-
-      // ===============================================
-      // GET FIRST MATCHING PROPERTY
-      // ===============================================
-
-      const feature =
-        data.features[0];
-
-
-      const attributes =
-        feature.attributes || {};
-
-
-      const geometry =
-        feature.geometry || null;
-
-
-      // ===============================================
-      // PROPERTY IDENTIFIERS
-      // ===============================================
-
-      searchInputResult.textContent =
-        originalSearchValue;
-
-
-      oldPinResult.textContent =
-        attributes.OLDPIN ||
-        "Not Available";
-
-
-      pin14Result.textContent =
-        attributes.PIN14 ||
-        attributes.PIN ||
-        "Not Available";
-
-
-      // ===============================================
-      // OWNER NAME
-      // ===============================================
-
-      const ownerParts = [];
-
-
-      if (attributes.AcctName1) {
-
-        ownerParts.push(
-          attributes.AcctName1
-        );
-
-      }
-
-
-      if (attributes.AcctName2) {
-
-        ownerParts.push(
-          attributes.AcctName2
-        );
-
-      }
-
-
-      const ownerName =
-        ownerParts.length > 0
-          ? ownerParts.join(" ")
-          : "Not Available";
-
-
-      ownerResult.textContent =
-        ownerName;
-
-
-      // ===============================================
-      // PROPERTY STATUS
-      // ===============================================
-
-      propertyStatus.textContent =
-        "Property Identified";
-
-
-      // ===============================================
-      // STATUS MESSAGE
-      // ===============================================
-
-      if (geometry) {
-
-        statusMessage.textContent =
-          "Property identified successfully. Parcel geometry is available and ready for the next screening step.";
-
-      } else {
-
-        statusMessage.textContent =
-          "Property identified successfully, but parcel geometry was not returned.";
-
-      }
-
-
-      // ===============================================
-      // STORE PROPERTY DATA
-      //
-      // This becomes the foundation for:
-      //
-      // Step 2 - Geometry
-      // Step 3 - Jurisdiction
-      // Step 4 - Flood Hazard
-      // Step 5 - Regulatory Gate
-      // ===============================================
-
-      window.currentProperty = {
-
-        searchValue:
-          originalSearchValue,
-
-        normalizedSearchValue:
-          normalizedSearchValue,
-
-        pin:
-          attributes.PIN || null,
-
-        pin14:
-          attributes.PIN14 || null,
-
-        oldPin:
-          attributes.OLDPIN || null,
-
-        parcel:
-          attributes.PARCEL || null,
-
-        owner:
-          ownerName,
-
-        acreage:
-          attributes.CALCULATED_ACREAGE || null,
-
-        realId:
-          attributes.PropertyReal_ID || null,
-
-        geometry:
-          geometry
-
-      };
-
-
-      console.log(
-        "Current Property:",
-        window.currentProperty
-      );
-
-
-      // ===============================================
-      // UPDATE WORKFLOW
-      // ===============================================
-
-      updateWorkflow(
-        geometry !== null
-      );
-
 
     }
 
 
-    // =================================================
-    // ERROR HANDLING
-    // =================================================
+    // -------------------------------------------------
+    // USE FIRST MATCH
+    // -------------------------------------------------
 
-    catch (error) {
-
-      console.error(
-        "Cabarrus OpenData GIS Search Error:",
-        error
-      );
+    const property =
+      data.features[0].attributes;
 
 
-      statusMessage.textContent =
-        "Unable to retrieve property information. " +
-        "Please try again or check the browser console for details.";
+    displayProperty(property);
 
-
-      propertyStatus.textContent =
-        "GIS Search Error";
-
-
-      oldPinResult.textContent =
-        "—";
-
-      pin14Result.textContent =
-        "—";
-
-      ownerResult.textContent =
-        "—";
-
-
-      updateWorkflow(false);
-
-    }
-
-
-    // =================================================
-    // RESTORE BUTTON
-    // =================================================
-
-    finally {
-
-      searchButton.disabled =
-        false;
-
-
-      searchButton.textContent =
-        "🔎 Search GIS";
-
-    }
 
   }
 
 
-  // =====================================================
-  // SEARCH BUTTON CLICK
-  // =====================================================
+  // ---------------------------------------------------
+  // HANDLE ERRORS
+  // ---------------------------------------------------
 
-  searchButton.addEventListener(
-    "click",
-    searchProperty
+  catch (error) {
+
+    console.error(
+      "Cabarrus GIS Search Error:",
+      error
+    );
+
+
+    setStatus(
+      "Unable to complete the GIS search. Please try again."
+    );
+
+
+    oldPinResult.textContent = "—";
+
+    pin14Result.textContent = "—";
+
+    ownerResult.textContent = "—";
+
+    propertyStatus.textContent =
+      "GIS Search Error";
+
+  }
+
+
+  // ---------------------------------------------------
+  // RESTORE BUTTON
+  // ---------------------------------------------------
+
+  finally {
+
+    searchButton.disabled = false;
+
+    searchButton.textContent =
+      "🔎 Search GIS";
+
+  }
+
+}
+
+
+// =====================================================
+// DISPLAY PROPERTY
+// =====================================================
+
+function displayProperty(property) {
+
+
+  // ---------------------------------------------------
+  // PIN14
+  // ---------------------------------------------------
+
+  pin14Result.textContent =
+    property.PIN14 || "Not Available";
+
+
+  // ---------------------------------------------------
+  // LEGACY PIN
+  // ---------------------------------------------------
+
+  oldPinResult.textContent =
+    property.OLDPIN ||
+    property.PIN ||
+    "Not Available";
+
+
+  // ---------------------------------------------------
+  // OWNER
+  // ---------------------------------------------------
+
+  const ownerParts = [];
+
+
+  if (property.AcctName1) {
+
+    ownerParts.push(property.AcctName1);
+
+  }
+
+
+  if (property.AcctName2) {
+
+    ownerParts.push(property.AcctName2);
+
+  }
+
+
+  ownerResult.textContent =
+    ownerParts.length > 0
+      ? ownerParts.join(" ")
+      : "Not Available";
+
+
+  // ---------------------------------------------------
+  // STATUS
+  // ---------------------------------------------------
+
+  propertyStatus.textContent =
+    "Property Identified";
+
+
+  setStatus(
+    "Property successfully identified in Cabarrus County public property records."
   );
 
 
-  // =====================================================
-  // ENTER KEY
-  // =====================================================
+  // ---------------------------------------------------
+  // WORKFLOW
+  // ---------------------------------------------------
 
-  propertyInput.addEventListener(
-    "keydown",
-    function (event) {
+  activateWorkflowStep(1);
 
-      if (event.key === "Enter") {
 
-        searchProperty();
-
-      }
-
-    }
+  console.log(
+    "Property Record:",
+    property
   );
 
+}
 
-});
+
+// =====================================================
+// PROPERTY NOT FOUND
+// =====================================================
+
+function handlePropertyNotFound(searchValue) {
+
+
+  oldPinResult.textContent = "—";
+
+  pin14Result.textContent = "—";
+
+  ownerResult.textContent = "—";
+
+
+  propertyStatus.textContent =
+    "Property Not Found";
+
+
+  setStatus(
+    `No matching property was found for "${searchValue}" in the Cabarrus County public property records.`
+  );
+
+}
+
+
+// =====================================================
+// STATUS MESSAGE
+// =====================================================
+
+function setStatus(message) {
+
+  statusMessage.textContent = message;
+
+}
+
+
+// =====================================================
+// WORKFLOW ACTIVATION
+// =====================================================
+
+function activateWorkflowStep(stepNumber) {
+
+
+  const steps =
+    document.querySelectorAll(".workflow-step");
+
+
+  steps.forEach(function (step) {
+
+    step.classList.remove("active");
+
+  });
+
+
+  const activeStep =
+    document.getElementById(
+      `step${stepNumber}`
+    );
+
+
+  if (activeStep) {
+
+    activeStep.classList.add("active");
+
+  }
+
+}
+
+
+// =====================================================
+// BASIC SQL ESCAPING
+// =====================================================
+
+function escapeSql(value) {
+
+  return String(value).replace(
+    /'/g,
+    "''"
+  );
+
+}
