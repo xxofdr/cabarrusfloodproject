@@ -1,548 +1,1115 @@
 /* =====================================================
-   GLOBAL
+   CABARRUS FLOOD SMART INTAKE
+   APPLICATION JAVASCRIPT
 ===================================================== */
 
-* {
-  box-sizing: border-box;
-}
+
+/* =====================================================
+   PUBLIC GIS SERVICE ENDPOINTS
+===================================================== */
 
 
-body {
-  margin: 0;
+/*
+  Public Cabarrus County parcel service.
 
-  font-family:
-    Arial,
-    Helvetica,
-    sans-serif;
+  This is the parcel service currently used by the
+  application for property identification.
+*/
 
-  background: #eef3f7;
+const PARCEL_SERVICE_URL =
+  "https://location.cabarruscounty.us/arcgisservices/rest/services/Parcels/MapServer/0/query";
 
-  color: #1f2933;
-}
+
+/*
+  Public Cabarrus County Municipal District service.
+
+  Used to identify municipal jurisdiction.
+*/
+
+const MUNICIPAL_SERVICE_URL =
+  "https://location.cabarruscounty.us/arcgisservices/rest/services/OpenData/MunicipalDistrict/MapServer/0/query";
 
 
 
 /* =====================================================
-   APPLICATION HEADER
+   APPLICATION ELEMENTS
 ===================================================== */
 
-.app-header {
-
-  background: #173f5f;
-
-  color: white;
-
-  padding: 28px 40px;
-
-  border-bottom: 5px solid #2f7da8;
-
-}
+const pinInput =
+  document.getElementById("pinInput");
 
 
-.app-header h1 {
-
-  margin: 0 0 6px 0;
-
-  font-size: 30px;
-
-}
+const searchButton =
+  document.getElementById("searchButton");
 
 
-.app-header p {
+const statusMessage =
+  document.getElementById("statusMessage");
 
-  margin: 0;
 
-  color: #d7e7f2;
-
-  font-size: 16px;
-
-}
+const statusDot =
+  document.getElementById("statusDot");
 
 
 
 /* =====================================================
-   MAIN CONTAINER
+   SEARCH BUTTON
 ===================================================== */
 
-.container {
-
-  max-width: 1100px;
-
-  margin: 30px auto;
-
-  padding: 0 20px 40px;
-
-}
+searchButton.addEventListener(
+  "click",
+  searchProperty
+);
 
 
 
 /* =====================================================
-   CARDS
+   ENTER KEY SEARCH
 ===================================================== */
 
-.search-card,
-.status-card,
-.property-card,
-.jurisdiction-card,
-.workflow-card {
+pinInput.addEventListener(
+  "keydown",
+  function (event) {
 
-  background: white;
+    if (event.key === "Enter") {
 
-  border-radius: 10px;
+      searchProperty();
 
-  padding: 24px;
+    }
 
-  margin-bottom: 22px;
-
-  box-shadow:
-    0 3px 12px
-    rgba(0, 0, 0, 0.12);
-
-}
+  }
+);
 
 
 
 /* =====================================================
-   HEADINGS
+   MAIN PROPERTY SEARCH
 ===================================================== */
 
-h2 {
+async function searchProperty() {
 
-  margin-top: 0;
 
-  color: #173f5f;
+  const searchValue =
+    pinInput.value.trim();
 
-}
 
+  /* ---------------------------------------------------
+     VALIDATE INPUT
+  --------------------------------------------------- */
 
+  if (!searchValue) {
 
-/* =====================================================
-   PROPERTY SEARCH
-===================================================== */
+    updateStatus(
+      "Please enter a Property PIN, Legacy PIN, Old PIN, or Parcel Number.",
+      "error"
+    );
 
-.instructions {
 
-  color: #52616b;
-
-}
-
-
-.search-row {
-
-  display: flex;
-
-  gap: 10px;
-
-  margin-top: 18px;
-
-}
-
-
-#pinInput {
-
-  flex: 1;
-
-  padding: 14px;
-
-  font-size: 18px;
-
-  border: 2px solid #cbd5dc;
-
-  border-radius: 6px;
-
-}
-
-
-#pinInput:focus {
-
-  outline: none;
-
-  border-color: #2f7da8;
-
-}
-
-
-#searchButton {
-
-  background: #1976a8;
-
-  color: white;
-
-  border: none;
-
-  border-radius: 6px;
-
-  padding: 14px 22px;
-
-  font-size: 16px;
-
-  font-weight: bold;
-
-  cursor: pointer;
-
-  min-width: 165px;
-
-}
-
-
-#searchButton:hover {
-
-  background: #125b82;
-
-}
-
-
-#searchButton:disabled {
-
-  background: #8ba7b8;
-
-  cursor: wait;
-
-}
-
-
-.example {
-
-  color: #687780;
-
-  margin-bottom: 0;
-
-}
-
-
-
-/* =====================================================
-   SMART STATUS
-===================================================== */
-
-.status-card {
-
-  border-left: 6px solid #2f7da8;
-
-}
-
-
-.status-header {
-
-  font-size: 13px;
-
-  font-weight: bold;
-
-  color: #52616b;
-
-  margin-bottom: 10px;
-
-}
-
-
-.status-dot {
-
-  display: inline-block;
-
-  width: 10px;
-
-  height: 10px;
-
-  background: #f0a500;
-
-  border-radius: 50%;
-
-  margin-right: 8px;
-
-}
-
-
-.status-dot.success {
-
-  background: #2e9b57;
-
-}
-
-
-.status-dot.error {
-
-  background: #c0392b;
-
-}
-
-
-.status-dot.loading {
-
-  background: #1976a8;
-
-}
-
-
-#statusMessage {
-
-  font-size: 18px;
-
-  color: #173f5f;
-
-}
-
-
-
-/* =====================================================
-   PROPERTY PROFILE
-===================================================== */
-
-.property-grid {
-
-  display: grid;
-
-  grid-template-columns:
-    repeat(2, 1fr);
-
-  gap: 15px;
-
-}
-
-
-.property-item {
-
-  background: #f4f7f9;
-
-  padding: 16px;
-
-  border-radius: 6px;
-
-  border-left: 4px solid #2f7da8;
-
-}
-
-
-
-/* =====================================================
-   JURISDICTION PROFILE
-===================================================== */
-
-.jurisdiction-grid {
-
-  display: grid;
-
-  grid-template-columns:
-    repeat(2, 1fr);
-
-  gap: 15px;
-
-}
-
-
-.jurisdiction-item {
-
-  background: #f4f7f9;
-
-  padding: 16px;
-
-  border-radius: 6px;
-
-  border-left: 4px solid #2f7da8;
-
-}
-
-
-.full-width {
-
-  grid-column: 1 / -1;
-
-}
-
-
-
-/* =====================================================
-   LABELS
-===================================================== */
-
-.label {
-
-  display: block;
-
-  font-size: 12px;
-
-  font-weight: bold;
-
-  text-transform: uppercase;
-
-  color: #687780;
-
-  margin-bottom: 7px;
-
-}
-
-
-
-/* =====================================================
-   WORKFLOW
-===================================================== */
-
-.workflow {
-
-  max-width: 700px;
-
-  margin: auto;
-
-}
-
-
-.workflow-step {
-
-  display: flex;
-
-  align-items: center;
-
-  gap: 15px;
-
-  background: #e8f1f6;
-
-  color: #173f5f;
-
-  padding: 16px 20px;
-
-  border-radius: 6px;
-
-  border-left: 5px solid #aab9c4;
-
-  transition:
-    0.2s ease;
-
-}
-
-
-.workflow-step.active {
-
-  background: #d9edf7;
-
-  border-left-color: #1976a8;
-
-}
-
-
-.step-number {
-
-  display: flex;
-
-  align-items: center;
-
-  justify-content: center;
-
-  width: 34px;
-
-  height: 34px;
-
-  min-width: 34px;
-
-  border-radius: 50%;
-
-  background: #aab9c4;
-
-  color: white;
-
-  font-weight: bold;
-
-}
-
-
-.workflow-step.active .step-number {
-
-  background: #1976a8;
-
-}
-
-
-.step-content {
-
-  display: flex;
-
-  flex-direction: column;
-
-  gap: 4px;
-
-}
-
-
-.step-content strong {
-
-  color: #173f5f;
-
-}
-
-
-.step-content span {
-
-  font-size: 14px;
-
-  color: #52616b;
-
-}
-
-
-.workflow-arrow {
-
-  text-align: center;
-
-  font-size: 24px;
-
-  color: #1976a8;
-
-  padding: 5px;
-
-}
-
-
-
-/* =====================================================
-   MOBILE
-===================================================== */
-
-@media (max-width: 700px) {
-
-  .search-row {
-
-    flex-direction: column;
+    return;
 
   }
 
 
-  #searchButton {
+  /* ---------------------------------------------------
+     RESET APPLICATION
+  --------------------------------------------------- */
 
-    width: 100%;
+  resetResults();
+
+
+  document.getElementById("searchInput").textContent =
+    searchValue;
+
+
+  updateStatus(
+    "Searching Cabarrus County public GIS data...",
+    "loading"
+  );
+
+
+  searchButton.disabled = true;
+
+
+  searchButton.textContent =
+    "Searching...";
+
+
+  try {
+
+
+    /* =================================================
+       SEARCH PARCEL SERVICE
+    ================================================= */
+
+    const parcelResult =
+      await findParcel(searchValue);
+
+
+    /* -------------------------------------------------
+       NO PROPERTY FOUND
+    ------------------------------------------------- */
+
+    if (!parcelResult) {
+
+      updateStatus(
+        "No matching property was found in the Cabarrus County public parcel data.",
+        "error"
+      );
+
+
+      document.getElementById("propertyStatus").textContent =
+        "Property Not Found";
+
+
+      return;
+
+    }
+
+
+    /* =================================================
+       PROPERTY FOUND
+    ================================================= */
+
+    const parcel =
+      parcelResult.feature;
+
+
+    const attributes =
+      parcel.attributes || {};
+
+
+    const geometry =
+      parcel.geometry;
+
+
+    const spatialReference =
+      parcelResult.spatialReference;
+
+
+    /* -------------------------------------------------
+       UPDATE PROPERTY PROFILE
+    ------------------------------------------------- */
+
+    document.getElementById("oldPinResult").textContent =
+      formatValue(
+        getFirstValue(
+          attributes,
+          [
+            "OLDPIN",
+            "OLD_PIN",
+            "OLDPIN_",
+            "PIN"
+          ]
+        )
+      );
+
+
+    document.getElementById("pin14Result").textContent =
+      formatValue(
+        getFirstValue(
+          attributes,
+          [
+            "PIN14",
+            "PIN_14",
+            "PIN"
+          ]
+        )
+      );
+
+
+    document.getElementById("ownerResult").textContent =
+      formatValue(
+        getFirstValue(
+          attributes,
+          [
+            "OWNER",
+            "OWNERNAME",
+            "OWNER_NAME",
+            "OwnerName"
+          ]
+        )
+      );
+
+
+    document.getElementById("propertyStatus").textContent =
+      "Property Identified";
+
+
+    /* -------------------------------------------------
+       ACTIVATE WORKFLOW
+    ------------------------------------------------- */
+
+    activateWorkflowStep("step1");
+
+
+    if (geometry) {
+
+      activateWorkflowStep("step2");
+
+    }
+
+
+    /* -------------------------------------------------
+       PROPERTY IDENTIFIED STATUS
+    ------------------------------------------------- */
+
+    updateStatus(
+      "Property identified successfully. Parcel geometry is available and ready for jurisdiction screening.",
+      "success"
+    );
+
+
+    /* =================================================
+       STEP 3
+       JURISDICTION IDENTIFICATION
+    ================================================= */
+
+    if (geometry) {
+
+      await identifyJurisdiction(
+        geometry,
+        spatialReference
+      );
+
+    } else {
+
+      document.getElementById(
+        "municipalJurisdiction"
+      ).textContent =
+        "Parcel geometry unavailable";
+
+
+      document.getElementById(
+        "geographicStatus"
+      ).textContent =
+        "Unable to perform jurisdiction screening";
+
+
+      document.getElementById(
+        "buildingCodeJurisdiction"
+      ).textContent =
+        "Building code authority cannot be evaluated until parcel geometry is available.";
+
+    }
+
+
+  } catch (error) {
+
+
+    console.error(
+      "Property search error:",
+      error
+    );
+
+
+    updateStatus(
+      "The public GIS service could not be reached. Please try again.",
+      "error"
+    );
+
+
+    document.getElementById("propertyStatus").textContent =
+      "GIS Lookup Error";
+
+
+  } finally {
+
+
+    searchButton.disabled = false;
+
+
+    searchButton.textContent =
+      "🔎 Search GIS";
+
+  }
+
+}
+
+
+
+/* =====================================================
+   FIND PARCEL
+===================================================== */
+
+async function findParcel(searchValue) {
+
+
+  /*
+    The application attempts several possible searches.
+
+    This allows users to search using:
+
+    - Current PIN14
+    - Legacy PIN / OLDPIN
+    - PIN
+    - Parcel Number
+  */
+
+
+  const searches = [
+
+    {
+      field: "PIN14",
+      value: `'${escapeSql(searchValue)}'`
+    },
+
+    {
+      field: "OLDPIN",
+      value: escapeSql(searchValue)
+    },
+
+    {
+      field: "PIN",
+      value: `'${escapeSql(searchValue)}'`
+    },
+
+    {
+      field: "PARCEL",
+      value: `'${escapeSql(searchValue)}'`
+    }
+
+  ];
+
+
+  for (const search of searches) {
+
+
+    const whereClause =
+      `${search.field} = ${search.value}`;
+
+
+    try {
+
+
+      const params =
+        new URLSearchParams({
+
+          f: "json",
+
+          where: whereClause,
+
+          outFields: "*",
+
+          returnGeometry: "true"
+
+        });
+
+
+      const requestUrl =
+        `${PARCEL_SERVICE_URL}?${params.toString()}`;
+
+
+      const response =
+        await fetch(requestUrl);
+
+
+      if (!response.ok) {
+
+        continue;
+
+      }
+
+
+      const data =
+        await response.json();
+
+
+      /*
+        ArcGIS can return an error object.
+      */
+
+      if (data.error) {
+
+        console.warn(
+          "GIS service error:",
+          data.error
+        );
+
+
+        continue;
+
+      }
+
+
+      if (
+        data.features &&
+        data.features.length > 0
+      ) {
+
+        return {
+
+          feature:
+            data.features[0],
+
+          spatialReference:
+            data.spatialReference || null
+
+        };
+
+      }
+
+
+    } catch (error) {
+
+
+      console.warn(
+        `Search attempt failed for ${search.field}:`,
+        error
+      );
+
+    }
 
   }
 
 
-  .property-grid,
-  .jurisdiction-grid {
+  /*
+    If exact searches fail, try a broader search
+    using LIKE for string fields.
+  */
 
-    grid-template-columns: 1fr;
+  return await findParcelBroadSearch(
+    searchValue
+  );
+
+}
+
+
+
+/* =====================================================
+   BROAD PARCEL SEARCH
+===================================================== */
+
+async function findParcelBroadSearch(searchValue) {
+
+
+  const stringFields = [
+
+    "PIN14",
+
+    "PIN",
+
+    "PARCEL"
+
+  ];
+
+
+  for (const field of stringFields) {
+
+
+    try {
+
+
+      const whereClause =
+        `${field} LIKE '%${escapeSql(searchValue)}%'`;
+
+
+      const params =
+        new URLSearchParams({
+
+          f: "json",
+
+          where: whereClause,
+
+          outFields: "*",
+
+          returnGeometry: "true",
+
+          resultRecordCount: "10"
+
+        });
+
+
+      const response =
+        await fetch(
+          `${PARCEL_SERVICE_URL}?${params.toString()}`
+        );
+
+
+      if (!response.ok) {
+
+        continue;
+
+      }
+
+
+      const data =
+        await response.json();
+
+
+      if (
+        data.features &&
+        data.features.length > 0
+      ) {
+
+        return {
+
+          feature:
+            data.features[0],
+
+          spatialReference:
+            data.spatialReference || null
+
+        };
+
+      }
+
+
+    } catch (error) {
+
+
+      console.warn(
+        "Broad parcel search failed:",
+        error
+      );
+
+    }
 
   }
 
 
-  .app-header {
+  return null;
 
-    padding: 22px;
+}
+
+
+
+/* =====================================================
+   JURISDICTION IDENTIFICATION
+===================================================== */
+
+async function identifyJurisdiction(
+  parcelGeometry,
+  spatialReference
+) {
+
+
+  /* ---------------------------------------------------
+     UPDATE JURISDICTION STATUS
+  --------------------------------------------------- */
+
+  document.getElementById(
+    "municipalJurisdiction"
+  ).textContent =
+    "Checking public GIS data...";
+
+
+  document.getElementById(
+    "geographicStatus"
+  ).textContent =
+    "Municipal boundary screening in progress";
+
+
+  document.getElementById(
+    "buildingCodeJurisdiction"
+  ).textContent =
+    "Municipal location is being identified. Building code authority is evaluated separately.";
+
+
+  try {
+
+
+    /* -------------------------------------------------
+       DETERMINE SPATIAL REFERENCE
+    ------------------------------------------------- */
+
+    const wkid =
+      getSpatialReferenceWkid(
+        parcelGeometry,
+        spatialReference
+      );
+
+
+    /*
+      Add spatial reference information to the
+      geometry being sent to the GIS service.
+    */
+
+    const geometry = {
+
+      ...parcelGeometry,
+
+      spatialReference: {
+        wkid: wkid
+      }
+
+    };
+
+
+    /* -------------------------------------------------
+       BUILD GIS QUERY
+    ------------------------------------------------- */
+
+    const params =
+      new URLSearchParams({
+
+        f: "json",
+
+        geometry:
+          JSON.stringify(geometry),
+
+        geometryType:
+          "esriGeometryPolygon",
+
+        inSR:
+          String(wkid),
+
+        spatialRel:
+          "esriSpatialRelIntersects",
+
+        outFields:
+          "DISTRICT",
+
+        returnGeometry:
+          "false"
+
+      });
+
+
+    const requestUrl =
+      `${MUNICIPAL_SERVICE_URL}?${params.toString()}`;
+
+
+    const response =
+      await fetch(requestUrl);
+
+
+    if (!response.ok) {
+
+      throw new Error(
+        `Municipal GIS request failed: ${response.status}`
+      );
+
+    }
+
+
+    const data =
+      await response.json();
+
+
+    console.log(
+      "Municipal jurisdiction response:",
+      data
+    );
+
+
+    if (data.error) {
+
+      throw new Error(
+        data.error.message ||
+        "Municipal GIS returned an error."
+      );
+
+    }
+
+
+    /* =================================================
+       MUNICIPALITY FOUND
+    ================================================= */
+
+    if (
+      data.features &&
+      data.features.length > 0
+    ) {
+
+
+      const districts =
+        [...new Set(
+
+          data.features
+
+            .map(
+              feature =>
+                feature.attributes?.DISTRICT
+            )
+
+            .filter(Boolean)
+
+        )];
+
+
+      if (districts.length === 1) {
+
+
+        const district =
+          districts[0];
+
+
+        document.getElementById(
+          "municipalJurisdiction"
+        ).textContent =
+          district;
+
+
+        document.getElementById(
+          "geographicStatus"
+        ).textContent =
+          "Parcel intersects the identified municipal jurisdiction";
+
+
+        document.getElementById(
+          "buildingCodeJurisdiction"
+        ).textContent =
+          "Municipal jurisdiction identified. Building code enforcement authority must be evaluated separately from municipal boundaries.";
+
+
+        activateWorkflowStep("step3");
+
+
+        return district;
+
+      }
+
+
+      /* ===============================================
+         MULTIPLE JURISDICTIONS
+      =============================================== */
+
+      if (districts.length > 1) {
+
+
+        document.getElementById(
+          "municipalJurisdiction"
+        ).textContent =
+          districts.join(" / ");
+
+
+        document.getElementById(
+          "geographicStatus"
+        ).textContent =
+          "Parcel intersects multiple municipal jurisdictions. Manual review may be required.";
+
+
+        document.getElementById(
+          "buildingCodeJurisdiction"
+        ).textContent =
+          "Multiple jurisdiction boundaries intersect the parcel. Building code enforcement authority requires additional review.";
+
+
+        activateWorkflowStep("step3");
+
+
+        return districts;
+
+      }
+
+    }
+
+
+    /* =================================================
+       NO MUNICIPAL DISTRICT FOUND
+    ================================================= */
+
+    document.getElementById(
+      "municipalJurisdiction"
+    ).textContent =
+      "Unincorporated Cabarrus County";
+
+
+    document.getElementById(
+      "geographicStatus"
+    ).textContent =
+      "No municipal district intersection was identified";
+
+
+    document.getElementById(
+      "buildingCodeJurisdiction"
+    ).textContent =
+      "Geographic location identified as outside the public municipal district layer. Building code enforcement authority will be evaluated separately.";
+
+
+    activateWorkflowStep("step3");
+
+
+    return "Unincorporated Cabarrus County";
+
+
+  } catch (error) {
+
+
+    console.error(
+      "Jurisdiction identification error:",
+      error
+    );
+
+
+    document.getElementById(
+      "municipalJurisdiction"
+    ).textContent =
+      "GIS lookup unavailable";
+
+
+    document.getElementById(
+      "geographicStatus"
+    ).textContent =
+      "Unable to complete municipal boundary screening";
+
+
+    document.getElementById(
+      "buildingCodeJurisdiction"
+    ).textContent =
+      "Public GIS jurisdiction lookup could not be completed.";
+
+
+    return null;
+
+  }
+
+}
+
+
+
+/* =====================================================
+   GET SPATIAL REFERENCE WKID
+===================================================== */
+
+function getSpatialReferenceWkid(
+  geometry,
+  featureSetSpatialReference
+) {
+
+
+  /*
+    First check the geometry itself.
+  */
+
+  if (
+    geometry?.spatialReference?.wkid
+  ) {
+
+    return geometry.spatialReference.wkid;
 
   }
 
 
-  .container {
+  /*
+    Then check the ArcGIS FeatureSet response.
+  */
 
-    padding-left: 14px;
+  if (
+    featureSetSpatialReference?.wkid
+  ) {
 
-    padding-right: 14px;
+    return featureSetSpatialReference.wkid;
+
+  }
+
+
+  /*
+    Current public Parcels service commonly
+    returns Web Mercator geometry.
+  */
+
+  return 3857;
+
+}
+
+
+
+/* =====================================================
+   GET FIRST AVAILABLE ATTRIBUTE VALUE
+===================================================== */
+
+function getFirstValue(
+  attributes,
+  fieldNames
+) {
+
+
+  for (const field of fieldNames) {
+
+
+    const value =
+      attributes[field];
+
+
+    if (
+      value !== undefined &&
+      value !== null &&
+      value !== ""
+    ) {
+
+      return value;
+
+    }
 
   }
 
 
-  .search-card,
-  .status-card,
-  .property-card,
-  .jurisdiction-card,
-  .workflow-card {
+  return null;
 
-    padding: 18px;
+}
+
+
+
+/* =====================================================
+   FORMAT VALUE
+===================================================== */
+
+function formatValue(value) {
+
+
+  if (
+    value === null ||
+    value === undefined ||
+    value === ""
+  ) {
+
+    return "—";
 
   }
+
+
+  return String(value);
+
+}
+
+
+
+/* =====================================================
+   ESCAPE SQL VALUE
+===================================================== */
+
+function escapeSql(value) {
+
+
+  return String(value)
+
+    .replace(
+      /'/g,
+      "''"
+    );
+
+}
+
+
+
+/* =====================================================
+   ACTIVATE WORKFLOW STEP
+===================================================== */
+
+function activateWorkflowStep(stepId) {
+
+
+  const step =
+    document.getElementById(stepId);
+
+
+  if (step) {
+
+    step.classList.add("active");
+
+  }
+
+}
+
+
+
+/* =====================================================
+   UPDATE STATUS
+===================================================== */
+
+function updateStatus(
+  message,
+  statusType = ""
+) {
+
+
+  statusMessage.textContent =
+    message;
+
+
+  statusDot.classList.remove(
+    "success",
+    "error",
+    "loading"
+  );
+
+
+  if (statusType) {
+
+    statusDot.classList.add(
+      statusType
+    );
+
+  }
+
+}
+
+
+
+/* =====================================================
+   RESET RESULTS
+===================================================== */
+
+function resetResults() {
+
+
+  /* ---------------------------------------------------
+     PROPERTY PROFILE
+  --------------------------------------------------- */
+
+  document.getElementById(
+    "searchInput"
+  ).textContent =
+    "—";
+
+
+  document.getElementById(
+    "oldPinResult"
+  ).textContent =
+    "—";
+
+
+  document.getElementById(
+    "pin14Result"
+  ).textContent =
+    "—";
+
+
+  document.getElementById(
+    "ownerResult"
+  ).textContent =
+    "—";
+
+
+  document.getElementById(
+    "propertyStatus"
+  ).textContent =
+    "Searching...";
+
+
+  /* ---------------------------------------------------
+     JURISDICTION PROFILE
+  --------------------------------------------------- */
+
+  document.getElementById(
+    "municipalJurisdiction"
+  ).textContent =
+    "—";
+
+
+  document.getElementById(
+    "geographicStatus"
+  ).textContent =
+    "Waiting for property identification";
+
+
+  document.getElementById(
+    "buildingCodeJurisdiction"
+  ).textContent =
+    "Municipal location has not yet been identified.";
+
+
+  /* ---------------------------------------------------
+     WORKFLOW
+  --------------------------------------------------- */
+
+  document
+    .querySelectorAll(".workflow-step")
+    .forEach(step => {
+
+      step.classList.remove("active");
+
+    });
 
 }
