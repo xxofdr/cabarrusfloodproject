@@ -34,16 +34,21 @@ document.addEventListener("DOMContentLoaded", function () {
      STARTUP CHECK
   =================================================== */
 
-  console.log("Cabarrus Flood Smart Intake loaded.");
+  console.log("========================================");
+  console.log("CABARRUS FLOOD SMART INTAKE");
+  console.log("LIVE GIS SEARCH SCRIPT LOADED");
+  console.log("========================================");
+
+  if (!pinInput) {
+    console.error("ERROR: pinInput was not found.");
+  }
+
+  if (!searchButton) {
+    console.error("ERROR: searchButton was not found.");
+  }
 
   if (!pinInput || !searchButton) {
-
-    console.error(
-      "Required page elements were not found."
-    );
-
     return;
-
   }
 
 
@@ -53,7 +58,9 @@ document.addEventListener("DOMContentLoaded", function () {
 
   searchButton.addEventListener(
     "click",
-    searchProperty
+    function () {
+      searchProperty();
+    }
   );
 
 
@@ -78,7 +85,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
   /* ===================================================
-     MAIN SEARCH FUNCTION
+     MAIN PROPERTY SEARCH
   =================================================== */
 
   async function searchProperty() {
@@ -94,13 +101,19 @@ document.addEventListener("DOMContentLoaded", function () {
     if (!searchValue) {
 
       updateStatus(
-        "Please enter a Property PIN, Legacy PIN, or Parcel Number.",
+        "Please enter a Property PIN, Legacy PIN, Old PIN, or Parcel Number.",
         "error"
       );
 
       return;
 
     }
+
+
+    console.log("========================================");
+    console.log("STARTING PROPERTY SEARCH");
+    console.log("SEARCH VALUE:", searchValue);
+    console.log("========================================");
 
 
     /* -----------------------------------------------
@@ -138,7 +151,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
       /* ===============================================
-         SEARCH THE PARCEL LAYER
+         SEARCH PARCEL DATA
       =============================================== */
 
       const result =
@@ -151,6 +164,11 @@ document.addEventListener("DOMContentLoaded", function () {
 
       if (!result) {
 
+        console.warn(
+          "No matching property found."
+        );
+
+
         setText(
           "propertyStatus",
           "Property Not Found"
@@ -158,7 +176,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
         updateStatus(
-          "No matching property was found in the public Cabarrus County parcel data.",
+          "No matching property was found. Try a Current PIN, Legacy PIN, Old PIN, or Parcel Number.",
           "error"
         );
 
@@ -176,44 +194,68 @@ document.addEventListener("DOMContentLoaded", function () {
         result.attributes || {};
 
 
+      console.log("========================================");
+      console.log("PROPERTY FOUND");
+      console.log("ATTRIBUTES:", attributes);
+      console.log("GEOMETRY:", result.geometry);
+      console.log("========================================");
+
+
       /* -----------------------------------------------
-         POPULATE PROPERTY PROFILE
+         GET PROPERTY IDENTIFIERS
       ----------------------------------------------- */
 
-      setText(
-        "oldPinResult",
+      const oldPin =
         getValue(
           attributes,
           [
             "OLDPIN",
             "OldPIN"
           ]
-        )
+        );
+
+
+      const currentPin =
+        getValue(
+          attributes,
+          [
+            "PIN14",
+            "PIN"
+          ]
+        );
+
+
+      const owner =
+        getValue(
+          attributes,
+          [
+            "AcctName1",
+            "OWNER",
+            "OWNERNAME",
+            "OwnerName"
+          ]
+        );
+
+
+      /* -----------------------------------------------
+         POPULATE PROPERTY PROFILE
+      ----------------------------------------------- */
+
+      setText(
+        "oldPinResult",
+        oldPin
       );
 
 
       setText(
         "pin14Result",
-        getValue(
-          attributes,
-          [
-            "PIN14"
-          ]
-        )
+        currentPin
       );
 
 
       setText(
         "ownerResult",
-        getValue(
-          attributes,
-          [
-            "OWNER",
-            "AcctName1",
-            "OWNERNAME",
-            "OwnerName"
-          ]
-        )
+        owner
       );
 
 
@@ -242,35 +284,13 @@ document.addEventListener("DOMContentLoaded", function () {
       ----------------------------------------------- */
 
       updateStatus(
-        "Property identified successfully using Cabarrus County public GIS data.",
+        "Property identified successfully. Parcel geometry is available for the next screening step.",
         "success"
       );
 
 
-      /* -----------------------------------------------
-         LOG RESULT FOR DEVELOPMENT
-      ----------------------------------------------- */
-
-      console.log(
-        "Property result:",
-        result
-      );
-
-
-      console.log(
-        "Property attributes:",
-        attributes
-      );
-
-
-      console.log(
-        "Parcel geometry:",
-        result.geometry
-      );
-
-
       /* ===============================================
-         TEMPORARY JURISDICTION MESSAGE
+         JURISDICTION PLACEHOLDER
       =============================================== */
 
       if (result.geometry) {
@@ -289,7 +309,20 @@ document.addEventListener("DOMContentLoaded", function () {
 
         setText(
           "buildingCodeJurisdiction",
-          "Municipal and building code authority screening will be added next."
+          "Property geometry identified. Municipal and building code authority screening is ready for the next step."
+        );
+
+      } else {
+
+        setText(
+          "municipalJurisdiction",
+          "Property found - geometry unavailable"
+        );
+
+
+        setText(
+          "geographicStatus",
+          "Property identified"
         );
 
       }
@@ -299,8 +332,16 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
       console.error(
-        "GIS Search Error:",
+        "========================================"
+      );
+
+      console.error(
+        "GIS SEARCH ERROR:",
         error
+      );
+
+      console.error(
+        "========================================"
       );
 
 
@@ -311,7 +352,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
       updateStatus(
-        "Unable to complete the public GIS search. See the browser console for details.",
+        "Unable to complete the Cabarrus County GIS search. Please try again.",
         "error"
       );
 
@@ -320,6 +361,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
       searchButton.disabled = false;
+
 
       searchButton.textContent =
         "🔎 Search GIS";
@@ -330,47 +372,161 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
   /* ===================================================
-     SEARCH PARCEL FUNCTION
+     SEARCH PARCEL
   =================================================== */
 
   async function searchParcel(searchValue) {
 
 
-    /*
-      We will try several possible identifiers.
+    /* -----------------------------------------------
+       CLEAN INPUT
+    ----------------------------------------------- */
 
-      The public Tax Parcels layer includes
-      PIN14 and OLDPIN fields.
+    const cleanValue =
+      String(searchValue)
+        .trim();
+
+
+    const escapedValue =
+      escapeSql(cleanValue);
+
+
+    /*
+      Some Cabarrus legacy identifiers may appear
+      with decimal formatting.
     */
+
+    const decimalValue =
+      cleanValue.includes(".")
+        ? cleanValue
+        : cleanValue + ".0000000";
+
+
+    const escapedDecimalValue =
+      escapeSql(decimalValue);
+
+
+    /* ===============================================
+       SEARCH STRATEGIES
+
+       We try exact matches first.
+
+       Then legacy formatting.
+
+       Then starts-with matching.
+    =============================================== */
 
     const searches = [
 
-      {
-        field: "PIN14",
-        where:
-          `PIN14 = '${escapeSql(searchValue)}'`
-      },
+      /* --------------------------------------------
+         CURRENT PIN14 EXACT
+      -------------------------------------------- */
 
       {
-        field: "OLDPIN",
+        name: "PIN14 exact",
         where:
-          `OLDPIN = '${escapeSql(searchValue)}'`
+          `PIN14 = '${escapedValue}'`
       },
 
+
+      /* --------------------------------------------
+         CURRENT PIN EXACT
+      -------------------------------------------- */
+
       {
-        field: "PIN14",
+        name: "PIN exact",
         where:
-          `PIN14 LIKE '%${escapeSql(searchValue)}%'`
+          `PIN = '${escapedValue}'`
+      },
+
+
+      /* --------------------------------------------
+         OLD PIN EXACT
+      -------------------------------------------- */
+
+      {
+        name: "OLDPIN exact",
+        where:
+          `OLDPIN = '${escapedValue}'`
+      },
+
+
+      /* --------------------------------------------
+         OLD PIN DECIMAL FORMAT
+      -------------------------------------------- */
+
+      {
+        name: "OLDPIN decimal format",
+        where:
+          `OLDPIN = '${escapedDecimalValue}'`
+      },
+
+
+      /* --------------------------------------------
+         PIN14 STARTS WITH
+      -------------------------------------------- */
+
+      {
+        name: "PIN14 starts with",
+        where:
+          `PIN14 LIKE '${escapedValue}%'`
+      },
+
+
+      /* --------------------------------------------
+         PIN STARTS WITH
+      -------------------------------------------- */
+
+      {
+        name: "PIN starts with",
+        where:
+          `PIN LIKE '${escapedValue}%'`
+      },
+
+
+      /* --------------------------------------------
+         OLDPIN STARTS WITH
+
+         This is particularly important for
+         Legacy PIN searches.
+      -------------------------------------------- */
+
+      {
+        name: "OLDPIN starts with",
+        where:
+          `OLDPIN LIKE '${escapedValue}%'`
+      },
+
+
+      /* --------------------------------------------
+         OLDPIN CONTAINS
+      -------------------------------------------- */
+
+      {
+        name: "OLDPIN contains",
+        where:
+          `OLDPIN LIKE '%${escapedValue}%'`
       }
 
     ];
 
 
+    /* ===============================================
+       TRY EACH SEARCH
+    =============================================== */
+
     for (const search of searches) {
 
 
+      console.log("----------------------------------------");
+
       console.log(
-        "Trying GIS search:",
+        "TRYING SEARCH:",
+        search.name
+      );
+
+      console.log(
+        "WHERE:",
         search.where
       );
 
@@ -399,6 +555,12 @@ document.addEventListener("DOMContentLoaded", function () {
         `${TAX_PARCELS_URL}?${params.toString()}`;
 
 
+      console.log(
+        "REQUEST URL:",
+        url
+      );
+
+
       const response =
         await fetch(url);
 
@@ -406,7 +568,7 @@ document.addEventListener("DOMContentLoaded", function () {
       if (!response.ok) {
 
         console.warn(
-          "GIS request failed:",
+          "GIS HTTP ERROR:",
           response.status
         );
 
@@ -420,15 +582,19 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
       console.log(
-        "GIS response:",
+        "GIS RESPONSE:",
         data
       );
 
 
+      /* --------------------------------------------
+         ARCGIS ERROR
+      -------------------------------------------- */
+
       if (data.error) {
 
         console.warn(
-          "GIS returned an error:",
+          "ARCGIS ERROR:",
           data.error
         );
 
@@ -437,10 +603,20 @@ document.addEventListener("DOMContentLoaded", function () {
       }
 
 
+      /* --------------------------------------------
+         FEATURES FOUND
+      -------------------------------------------- */
+
       if (
         data.features &&
         data.features.length > 0
       ) {
+
+        console.log(
+          "PROPERTY MATCH FOUND USING:",
+          search.name
+        );
+
 
         return data.features[0];
 
@@ -448,6 +624,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     }
 
+
+    /* ===============================================
+       NO PROPERTY FOUND
+    =============================================== */
 
     return null;
 
@@ -598,7 +778,10 @@ document.addEventListener("DOMContentLoaded", function () {
 
     fields.forEach(function (id) {
 
-      setText(id, "—");
+      setText(
+        id,
+        "—"
+      );
 
     });
 
